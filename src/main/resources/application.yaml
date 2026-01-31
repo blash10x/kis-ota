@@ -1,3 +1,5 @@
 spring:
   application:
     name: ota
+  config:
+    import: classpath:kis_devlp.yaml

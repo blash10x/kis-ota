@@ -1,0 +1,18 @@
+package blash10x.kis.ota.config;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Author: myungsik.sung@gmail.com
+ */
+@Configuration
+@ConfigurationProperties(prefix = "kis")
+@Data
+public class KisProperties {
+  private String configRoot;
+  private String host;
+  private String appKey;
+  private String appSecret;
+}
