@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Author: myungsik.sung@gmail.com
+ * @author myungsik.sung@gmail.com
  */
 @RestController
 @RequiredArgsConstructor

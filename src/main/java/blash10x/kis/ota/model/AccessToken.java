@@ -3,7 +3,7 @@ package blash10x.kis.ota.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Author: myungsik.sung@gmail.com
+ * @author myungsik.sung@gmail.com
  */
 public record AccessToken(
     @JsonProperty("access_token") String accessToken,

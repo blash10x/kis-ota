@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Author: myungsik.sung@gmail.com
+ * @author myungsik.sung@gmail.com
  */
 @Service
 @RequiredArgsConstructor

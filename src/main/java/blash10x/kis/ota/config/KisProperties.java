@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Author: myungsik.sung@gmail.com
+ * @author myungsik.sung@gmail.com
  */
 @Configuration
 @ConfigurationProperties(prefix = "kis")

@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * Author: myungsik.sung@gmail.com
+ * @author myungsik.sung@gmail.com
  */
 @Service
 @RequiredArgsConstructor
