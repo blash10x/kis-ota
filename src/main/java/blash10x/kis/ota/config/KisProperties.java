@@ -15,4 +15,6 @@ public class KisProperties {
   private String host;
   private String appKey;
   private String appSecret;
+  private String accountNo;
+  private String accountProductCode;
 }

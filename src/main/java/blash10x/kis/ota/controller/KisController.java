@@ -2,6 +2,7 @@ package blash10x.kis.ota.controller;
 
 import blash10x.kis.ota.service.TradingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class KisController {
   private final TradingService tradingService;
 
-  @GetMapping("/")
+  @GetMapping(value = "/", produces = MediaType.APPLICATION_JSON_VALUE)
   public Object index() {
-    return tradingService.index();
+    return tradingService.inquireBalance();
   }
 }

@@ -1,6 +1,5 @@
 package blash10x.kis.ota.service;
 
-import blash10x.kis.ota.model.AccessToken;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -10,11 +9,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class TradingService {
-  private final KisAuthService kisAuthService;
+  private final BalanceService balanceService;
 
-  public String index() {
-    AccessToken accessToken = kisAuthService.authorize();
-
-    return accessToken.accessTokenExpired();
+  public Object inquireBalance() {
+    return balanceService.inquireBalance();
   }
 }
