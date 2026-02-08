@@ -2,6 +2,7 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.core.util.JsonNodes;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,12 +16,12 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -30,7 +31,6 @@ import tools.jackson.databind.ObjectMapper;
 public class KisAuthService {
   private static final Logger LOGGER = LoggerFactory.getLogger(KisAuthService.class);
   private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
-  private static final ObjectMapper objectMapper = new ObjectMapper();
   private final KisProperties kisProperties;
 
   public AccessToken authorize() {
@@ -61,7 +61,7 @@ public class KisAuthService {
   private AccessToken readAccessToken() {
     Path configPath = findConfigPath();
     if (configPath != null) {
-      AccessToken accessToken = objectMapper.readValue(configPath, AccessToken.class);
+      AccessToken accessToken = JsonNodes.toValue(configPath.toFile(), AccessToken.class);
       String accessTokenExpired = accessToken.accessTokenExpired().replace(" ", "T");
       LocalDateTime expirationDatetime = LocalDateTime.parse(accessTokenExpired);
       if (expirationDatetime.isAfter(LocalDateTime.now())) {
@@ -74,8 +74,8 @@ public class KisAuthService {
   private void saveAccessToken(AccessToken accessToken) {
     String configRoot = kisProperties.getConfigRoot();
     Path configPath = Paths.get(configRoot, "KIS-" + DATETIME_FORMATTER.format(LocalDateTime.now()) + ".json");
-    objectMapper.writeValue(configPath, accessToken);
-    LOGGER.info("saved successfully: " + configPath);
+    JsonNodes.toFile(configPath.toFile(), accessToken);
+    LOGGER.info("saved successfully: {}", configPath);
   }
 
   private AccessToken getAccessToken() {
@@ -99,7 +99,7 @@ public class KisAuthService {
         .bodyValue(getAccessTokenRequest)
         .retrieve()
         .toEntity(AccessToken.class);
-    return mono.block().getBody();
+    return mono.mapNotNull(HttpEntity::getBody).block();
   }
 
   @Builder
