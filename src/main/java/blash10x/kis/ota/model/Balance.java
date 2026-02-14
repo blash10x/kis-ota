@@ -3,7 +3,7 @@ package blash10x.kis.ota.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * @author Myungsik Sung (myungsik.sung@nol-universe.com)
+ * @author myungsik.sung@gmail.com
  */
 public record Balance(
     @JsonProperty("pdno") // 상품번호

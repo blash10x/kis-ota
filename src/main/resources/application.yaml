@@ -2,4 +2,4 @@ spring:
   application:
     name: ota
   config:
-    import: classpath:kis_devlp.yaml
+    import: classpath:kis_devlp.yaml,classpath:product.yaml,

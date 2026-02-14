@@ -3,7 +3,7 @@ package blash10x.kis.ota.model;
 import lombok.Getter;
 
 /**
- * @author Myungsik Sung (myungsik.sung@nol-universe.com)
+ * @author myungsik.sung@gmail.com
  */
 @Getter
 public enum OrderCode {

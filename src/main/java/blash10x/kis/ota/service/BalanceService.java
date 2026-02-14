@@ -1,11 +1,8 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
-import blash10x.kis.ota.model.OrderCode;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,18 +44,11 @@ public class BalanceService extends TradingService {
     }
 
     MultiValueMap<String, String> queryParams = buildRequestParams();
-    Mono<ResponseEntity<JsonNode>> mono =
-        externalService.get(PATH, headers, queryParams, JsonNode.class);
+    Mono<ResponseEntity<Response>> mono =
+        externalService.get(PATH, headers, queryParams, Response.class);
 
-    JsonNode jsonNode = mono.mapNotNull(HttpEntity::getBody).block();
-    Response response = JsonNodes.toValue(jsonNode, Response.class);
-    response.output1.forEach( balance -> {
-      double price = Double.parseDouble(balance.presentPrice()) * (1.0 - 0.024);
-      System.out.println(balance.toString() + ", " + calculateOrderPrice(price, OrderCode.BUY));
-
-    });
-
-    return response.output1;
+    Response response = mono.mapNotNull(HttpEntity::getBody).block();
+    return response != null ? response.output1 : List.of();
   }
 
   private MultiValueMap<String, String> buildRequestParams() {

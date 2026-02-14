@@ -34,8 +34,12 @@ abstract class TradingService {
     return headers;
   }
 
-  int calculateOrderPrice(double price, OrderCode code) {
-    int diff = OrderCode.BUY == code ? 0 : 4; // 내림(flooring) : 올림(ceiling)
-    return (int) (((price + diff) / 5) * 5);
+  public double calculateRate(int i, double base, double beta, OrderCode code) {
+    int direction = OrderCode.SELL == code ? 1 : -1;
+    return (100.0 + direction * (base + beta * i)) / 100;
+  }
+
+  int calculateTickPrice(double price, OrderCode code) {
+    return (int) (OrderCode.SELL == code ? Math.ceil(price / 5.0) : Math.floor(price / 5.0)) * 5;
   }
 }

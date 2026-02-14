@@ -20,6 +20,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClient.RequestBodySpec;
 import org.springframework.web.reactive.function.client.WebClient.RequestHeadersSpec;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriBuilder;
@@ -29,7 +30,7 @@ import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.transport.logging.AdvancedByteBufFormat;
 
 /**
- * @author Myungsik Sung (myungsik.sung@nol-universe.com)
+ * @author myungsik.sung@gmail.com
  */
 final class ExternalService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExternalService.class);
@@ -74,6 +75,14 @@ final class ExternalService {
         .build(); // to unlimited memory size: -1
   }
 
+  private URI buildURI(String path, MultiValueMap<String, ?> queryParams, UriBuilder uriBuilder) {
+    uriBuilder.path(path);
+    if (queryParams != null && !queryParams.isEmpty()) {
+      queryParams.forEach(uriBuilder::queryParam);
+    }
+    return uriBuilder.build();
+  }
+
   public <T> Mono<ResponseEntity<T>> get(
       String path,
       MultiValueMap<String, String> headers,
@@ -84,12 +93,21 @@ final class ExternalService {
     return retrieve(headers, requestHeadersSpec, responseType);
   }
 
-  private URI buildURI(String path, MultiValueMap<String, ?> queryParams, UriBuilder uriBuilder) {
-    uriBuilder.path(path);
-    if (queryParams != null && !queryParams.isEmpty()) {
-      queryParams.forEach(uriBuilder::queryParam);
+  public <T> Mono<ResponseEntity<T>> post(
+      String path,
+      MultiValueMap<String, String> headers,
+      MultiValueMap<String, ?> queryParams,
+      Object requestBody,
+      Class<T> responseType) {
+    RequestBodySpec requestBodySpec =
+        webClient
+            .post()
+            .uri(uriBuilder -> buildURI(path, queryParams, uriBuilder))
+            .contentType(MediaType.APPLICATION_JSON);
+    if (requestBody != null) {
+      requestBodySpec.bodyValue(requestBody);
     }
-    return uriBuilder.build();
+    return retrieve(headers, requestBodySpec, responseType);
   }
 
   private <T> Mono<ResponseEntity<T>> retrieve(
