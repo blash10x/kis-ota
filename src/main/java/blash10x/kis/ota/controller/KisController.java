@@ -2,9 +2,9 @@ package blash10x.kis.ota.controller;
 
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.OrderCode;
+import blash10x.kis.ota.model.ReservationOrderSeq;
 import blash10x.kis.ota.service.BalanceService;
 import blash10x.kis.ota.service.ReservationService;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,7 +26,7 @@ public class KisController {
   }
 
   @GetMapping(value = "/order-resv", produces = MediaType.APPLICATION_JSON_VALUE)
-  public JsonNode orderReservation(OrderCode orderCode) {
+  public List<ReservationOrderSeq>  orderReservation(OrderCode orderCode) {
     return reservationService.orderReservation(orderCode);
   }
 }

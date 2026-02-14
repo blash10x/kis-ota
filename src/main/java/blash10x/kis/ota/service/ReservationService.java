@@ -2,13 +2,13 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.ProductProperties;
-import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
+import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Builder;
@@ -61,12 +61,13 @@ public class ReservationService extends TradingService {
     accountProductCode = kisProperties.getAccountProductCode();
   }
 
-  public JsonNode orderReservation(OrderCode orderCode) {
+  public List<ReservationOrderSeq> orderReservation(OrderCode orderCode) {
     if (accessToken == null) {
       accessToken = getKisAuthService().authorize();
       headers = buildRequestHeaders(accessToken, TR_ID);
     }
 
+    List<ReservationOrderSeq> results = new ArrayList<>();
     List<Balance> balances = balanceService.inquireBalance();
     balances.stream().filter(balance -> products.containsKey(balance.productNo())).forEach(balance -> {
       Product product = products.get(balance.productNo());
@@ -74,16 +75,16 @@ public class ReservationService extends TradingService {
         for (int i = 1; i <= repetitions; i++) {
           double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
           double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
-          System.out.println(product + ": " + balance.presentPrice() + " -> " + orderUnitPrice + " -> " + calculateTickPrice(orderUnitPrice, orderCode) + ", rate=" + rate);
-          //orderReservation(balance.productNo(), orderUnitPrice, orderCode);
+          LOGGER.debug("{}: {} * {} = {}", orderCode, rate, balance.presentPrice(), orderUnitPrice);
+          ReservationOrderSeq result = orderReservation(balance.productNo(), orderUnitPrice, orderCode);
+          results.add(result);
         }
       }
     });
-
-    return JsonNodes.createEmptyObjectNode();
+    return results;
   }
 
-  private JsonNode orderReservation(String productNo, double orderUnitPrice, OrderCode orderCode) {
+  private ReservationOrderSeq orderReservation(String productNo, double orderUnitPrice, OrderCode orderCode) {
     Request request = Request.builder()
         .accountNo(accountNo)
         .accountProductCode(accountProductCode)
@@ -95,9 +96,16 @@ public class ReservationService extends TradingService {
         .orderObjectBalanceDivisionCode(ORD_OBJT_CBLC_DVSN_CD)
         .build();
 
-    Mono<ResponseEntity<JsonNode>> mono = externalService.post(PATH, headers, null, request, JsonNode.class);
-    JsonNode jsonNode = mono.mapNotNull(HttpEntity::getBody).block();
-    return jsonNode;
+    LOGGER.info("ReservationOrder: [{}] {}: {}",
+        productNo, orderCode, String.format("%,8d", Integer.parseInt(request.orderUnitPrice)));
+
+    Mono<ResponseEntity<Response>> mono = externalService.post(PATH, headers, null, request, Response.class);
+    Response response = mono.mapNotNull(HttpEntity::getBody).block();
+    if (response != null) {
+      LOGGER.info("Response: {}", response.msg);
+      return response.output;
+    }
+    return new ReservationOrderSeq("Unknown");
   }
 
   @Builder
@@ -118,4 +126,14 @@ public class ReservationService extends TradingService {
       String orderDivisionCode,
       @JsonProperty("ORD_OBJT_CBLC_DVSN_CD") // 주문대상잔고구분코드: 현금:10
       String orderObjectBalanceDivisionCode) {}
+
+  private record Response(
+      @JsonProperty("rt_cd") // 성공 실패 여부
+      String rt_cd,
+      @JsonProperty("msg_cd") // 응답코드
+      String msg_cd,
+      @JsonProperty("msg1") // 응답메세지
+      String msg,
+      @JsonProperty("output")
+      ReservationOrderSeq output) {}
 }

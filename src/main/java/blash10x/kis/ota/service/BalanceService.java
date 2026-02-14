@@ -3,6 +3,7 @@ package blash10x.kis.ota.service;
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,11 @@ public class BalanceService extends TradingService {
         externalService.get(PATH, headers, queryParams, Response.class);
 
     Response response = mono.mapNotNull(HttpEntity::getBody).block();
-    return response != null ? response.output1 : List.of();
+    if (response != null) {
+      LOGGER.info("Response: {}", response.msg);
+      return response.output;
+    }
+    return List.of();
   }
 
   private MultiValueMap<String, String> buildRequestParams() {
@@ -68,5 +73,13 @@ public class BalanceService extends TradingService {
     return queryParams;
   }
 
-  private record Response(List<Balance> output1) {}
+  private record Response(
+      @JsonProperty("rt_cd") // 성공 실패 여부
+      String rt_cd,
+      @JsonProperty("msg_cd") // 응답코드
+      String msg_cd,
+      @JsonProperty("msg1") // 응답메세지
+      String msg,
+      @JsonProperty("output1") // 응답메세지
+      List<Balance> output) {}
 }
