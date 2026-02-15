@@ -24,8 +24,8 @@ import reactor.core.publisher.Mono;
  * @author myungsik.sung@gmail.com
  */
 @Service
-public class ReservationService extends TradingService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ReservationService.class);
+public class ReservationOrderService extends TradingService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ReservationOrderService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv";
   private static final String TR_ID = "CTSC0008U";
   private static final String ORD_QTY = "1"; // 주문수량
@@ -43,7 +43,7 @@ public class ReservationService extends TradingService {
   private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
-  public ReservationService(
+  public ReservationOrderService(
       KisProperties kisProperties,
       ProductProperties productProperties,
       KisAuthService kisAuthService,
@@ -61,30 +61,38 @@ public class ReservationService extends TradingService {
     accountProductCode = kisProperties.getAccountProductCode();
   }
 
-  public List<ReservationOrderSeq> orderReservation(OrderCode orderCode) {
+  public List<ReservationOrderSeq> orderReservation(
+      List<String> productNos, OrderCode orderCode, boolean real) {
     if (accessToken == null) {
       accessToken = getKisAuthService().authorize();
       headers = buildRequestHeaders(accessToken, TR_ID);
     }
 
+    Map<String, Balance> balances = balanceService.getBalances();
+    List<String> orderProductNos  = orderCode == OrderCode.SELL
+        ? productNos.stream().filter(balances::containsKey).toList()
+        : productNos.stream().filter(products::containsKey).toList();
+
     List<ReservationOrderSeq> results = new ArrayList<>();
-    List<Balance> balances = balanceService.inquireBalance();
-    balances.stream().filter(balance -> products.containsKey(balance.productNo())).forEach(balance -> {
-      Product product = products.get(balance.productNo());
-      if (product.productName().equals(balance.productName())) {
-        for (int i = 1; i <= repetitions; i++) {
-          double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
-          double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
-          LOGGER.debug("{}: {} * {} = {}", orderCode, rate, balance.presentPrice(), orderUnitPrice);
-          ReservationOrderSeq result = orderReservation(balance.productNo(), orderUnitPrice, orderCode);
-          results.add(result);
-        }
+    orderProductNos.forEach(productNo -> {
+      Balance balance = balances.get(productNo);
+      Product product = products.get(productNo);
+      for (int i = 1; i <= repetitions; i++) {
+        double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
+        double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
+        LOGGER.info("{} | {} | {} | {} | {} | {}",
+            productNo, balance.productName(), orderCode, balance.presentPrice(),
+            String.format("%2.3f", (rate - 1.0) * 100),
+            String.format("%,8.2f", orderUnitPrice));
+        ReservationOrderSeq result = orderReservation(balance.productNo(), orderUnitPrice, orderCode, real);
+        results.add(result);
       }
     });
     return results;
   }
 
-  private ReservationOrderSeq orderReservation(String productNo, double orderUnitPrice, OrderCode orderCode) {
+  private ReservationOrderSeq orderReservation(
+      String productNo, double orderUnitPrice, OrderCode orderCode, boolean real) {
     Request request = Request.builder()
         .accountNo(accountNo)
         .accountProductCode(accountProductCode)
@@ -99,7 +107,9 @@ public class ReservationService extends TradingService {
     LOGGER.info("ReservationOrder: [{}] {}: {}",
         productNo, orderCode, String.format("%,8d", Integer.parseInt(request.orderUnitPrice)));
 
-    Mono<ResponseEntity<Response>> mono = externalService.post(PATH, headers, null, request, Response.class);
+    Mono<ResponseEntity<Response>> mono = real
+        ? externalService.post(PATH, headers, null, request, Response.class)
+        : Mono.empty();
     Response response = mono.mapNotNull(HttpEntity::getBody).block();
     if (response != null) {
       LOGGER.info("Response: {}", response.msg);

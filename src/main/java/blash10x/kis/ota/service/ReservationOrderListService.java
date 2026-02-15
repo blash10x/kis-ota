@@ -1,12 +1,12 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -20,10 +20,10 @@ import reactor.core.publisher.Mono;
  * @author myungsik.sung@gmail.com
  */
 @Service
-public class BalanceService extends TradingService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(BalanceService.class);
-  private static final String PATH = "/uapi/domestic-stock/v1/trading/inquire-balance";
-  private static final String TR_ID = "TTTC8434R";
+public class ReservationOrderListService extends TradingService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ReservationOrderListService.class);
+  private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-ccnl";
+  private static final String TR_ID = "CTSC0004R";
 
   private final ExternalService externalService;
   private final String accountNo;
@@ -31,7 +31,7 @@ public class BalanceService extends TradingService {
   private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
-  public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
+  public ReservationOrderListService(KisProperties kisProperties, KisAuthService kisAuthService) {
     super(kisProperties, kisAuthService);
 
     String host = kisProperties.getHost();
@@ -40,43 +40,39 @@ public class BalanceService extends TradingService {
     accountProductCode = kisProperties.getAccountProductCode();
   }
 
-  public List<Balance> inquireBalances() {
+  public JsonNode inquireReservationOrder(String startDate, String endDate) {
     if (accessToken == null) {
       accessToken = getKisAuthService().authorize();
       headers = buildRequestHeaders(accessToken, TR_ID);
     }
 
-    MultiValueMap<String, String> queryParams = buildRequestParams();
-    Mono<ResponseEntity<Response>> mono =
-        externalService.get(PATH, headers, queryParams, Response.class);
+    MultiValueMap<String, String> queryParams = buildRequestParams(startDate, endDate);
+    Mono<ResponseEntity<JsonNode>> mono =
+        externalService.get(PATH, headers, queryParams, JsonNode.class);
 
-    Response response = mono.mapNotNull(HttpEntity::getBody).block();
+    JsonNode response = mono.mapNotNull(HttpEntity::getBody).block();
     if (response != null) {
-      LOGGER.info("Response: {}", response.msg);
-      return response.output;
+      LOGGER.info("Response: {}", response);
+      return response;
     }
-    return List.of();
+    return JsonNodes.createEmptyObjectNode();
   }
 
-  public Map<String, Balance> getBalances() {
-    List<Balance> balances = inquireBalances();
-    return balances.stream().collect(Collectors.toMap(Balance::productNo, v -> v));
-  }
-
-  private MultiValueMap<String, String> buildRequestParams() {
+  private MultiValueMap<String, String> buildRequestParams(String startDate, String endDate) {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
     queryParams.add("CANO", accountNo);
     queryParams.add("ACNT_PRDT_CD", accountProductCode);
 
-    queryParams.add("AFHR_FLPR_YN", "N");
-    queryParams.add("OFL_YN", "");
-    queryParams.add("INQR_DVSN", "01");
-    queryParams.add("UNPR_DVSN", "01");
-    queryParams.add("FUND_STTL_ICLD_YN", "N");
-    queryParams.add("FNCG_AMT_AUTO_RDPT_YN", "N");
-    queryParams.add("PRCS_DVSN", "00");
-    queryParams.add("CTX_AREA_FK100", "");
-    queryParams.add("CTX_AREA_NK100", "");
+    queryParams.add("RSVN_ORD_ORD_DT", startDate);
+    queryParams.add("RSVN_ORD_END_DT", endDate);
+    queryParams.add("RSVN_ORD_SEQ", "");
+    queryParams.add("TMNL_MDIA_KIND_CD", "00");
+    queryParams.add("PRCS_DVSN_CD", "0");
+    queryParams.add("CNCL_YN", "N");
+    queryParams.add("PDNO", "");
+    queryParams.add("SLL_BUY_DVSN_CD", "");
+    queryParams.add("CTX_AREA_FK200", "");
+    queryParams.add("CTX_AREA_NK200", "");
     return queryParams;
   }
 
