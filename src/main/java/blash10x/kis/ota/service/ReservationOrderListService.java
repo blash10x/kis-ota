@@ -6,6 +6,7 @@ import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.LocalDate;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,13 +41,18 @@ public class ReservationOrderListService extends TradingService {
     accountProductCode = kisProperties.getAccountProductCode();
   }
 
-  public JsonNode inquireReservationOrder(String startDate, String endDate) {
+  public JsonNode inquireReservationOrder(String date) {
     if (accessToken == null) {
       accessToken = getKisAuthService().authorize();
       headers = buildRequestHeaders(accessToken, TR_ID);
     }
+    if (date == null) {
+      LocalDate now = LocalDate.now();
+      date = now.toString();
+    }
+    date = date.replace("-", "");
 
-    MultiValueMap<String, String> queryParams = buildRequestParams(startDate, endDate);
+    MultiValueMap<String, String> queryParams = buildRequestParams(date, date);
     Mono<ResponseEntity<JsonNode>> mono =
         externalService.get(PATH, headers, queryParams, JsonNode.class);
 

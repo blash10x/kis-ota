@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -20,7 +21,7 @@ public class ReservationOrderListController {
   private final ReservationOrderListService reservationOrderListService;
 
   @GetMapping(value = "/inquire-resv-order", produces = MediaType.APPLICATION_JSON_VALUE)
-  public JsonNode inquireReservationOrder(String startDate, String endDate) {
-    return reservationOrderListService.inquireReservationOrder(startDate, endDate);
+  public JsonNode inquireReservationOrder(@RequestParam(required = false) String date) {
+    return reservationOrderListService.inquireReservationOrder(date);
   }
 }

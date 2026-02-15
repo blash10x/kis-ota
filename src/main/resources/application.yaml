@@ -2,4 +2,19 @@ spring:
   application:
     name: ota
   config:
-    import: classpath:kis_devlp.yaml,classpath:product.yaml,
+    import: classpath:kis_devlp.yaml,classpath:product.yaml
+
+springdoc:
+  default-flat-param-object: true # Default: false, To default flatten parameter.
+  swagger-ui:
+    disable-swagger-default-url: true
+    operationsSorter: alpha # For sorting endpoints alphabetically
+    tagsSorter: alpha # For sorting tags alphabetically
+
+management:
+  info.git.enabled: false
+  endpoint:
+    env.show-values: always
+    health.show-details: always
+  endpoints:
+    web.exposure.include: health, info, env, metrics, caches, threaddump
