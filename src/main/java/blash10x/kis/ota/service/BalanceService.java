@@ -1,7 +1,7 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -28,7 +28,6 @@ public class BalanceService extends TradingService {
   private final ExternalService externalService;
   private final String accountNo;
   private final String accountProductCode;
-  private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
   public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
@@ -41,9 +40,8 @@ public class BalanceService extends TradingService {
   }
 
   public List<Balance> inquireBalances() {
-    if (accessToken == null) {
-      accessToken = getKisAuthService().authorize();
-      headers = buildRequestHeaders(accessToken, TR_ID);
+    if (headers == null) {
+      headers = buildRequestHeaders(TR_ID);
     }
 
     MultiValueMap<String, String> queryParams = buildRequestParams();

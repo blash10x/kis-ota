@@ -1,7 +1,7 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.NormalProcessingResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -25,7 +25,6 @@ public class ReservationOrderCancelService extends TradingService {
   private final ExternalService externalService;
   private final String accountNo;
   private final String accountProductCode;
-  private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderCancelService(
@@ -40,9 +39,8 @@ public class ReservationOrderCancelService extends TradingService {
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
-    if (accessToken == null) {
-      accessToken = getKisAuthService().authorize();
-      headers = buildRequestHeaders(accessToken, TR_ID);
+    if (headers == null) {
+      headers = buildRequestHeaders(TR_ID);
     }
 
     Request request = Request.builder()

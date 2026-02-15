@@ -1,4 +1,4 @@
-package blash10x.kis.ota.service;
+package blash10x.kis.ota.core.external;
 
 import blash10x.kis.ota.core.service.ClientException;
 import blash10x.kis.ota.core.service.ServiceException;

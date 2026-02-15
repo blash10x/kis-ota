@@ -2,7 +2,7 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.ProductProperties;
-import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
@@ -40,7 +40,6 @@ public class ReservationOrderService extends TradingService {
   private final BalanceService balanceService;
   private final String accountNo;
   private final String accountProductCode;
-  private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderService(
@@ -63,9 +62,8 @@ public class ReservationOrderService extends TradingService {
 
   public List<ReservationOrderSeq> orderReservation(
       List<String> productNos, OrderCode orderCode, boolean real) {
-    if (accessToken == null) {
-      accessToken = getKisAuthService().authorize();
-      headers = buildRequestHeaders(accessToken, TR_ID);
+    if (headers == null) {
+      headers = buildRequestHeaders(TR_ID);
     }
 
     Map<String, Balance> balances = balanceService.getBalances();
@@ -77,8 +75,14 @@ public class ReservationOrderService extends TradingService {
     orderProductNos.forEach(productNo -> {
       Balance balance = balances.get(productNo);
       Product product = products.get(productNo);
-      for (int i = 1; i <= repetitions; i++) {
+      int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
+      int size = Math.min(orderPossibleQuantity, repetitions);
+      for (int i = 1; i <= size; i++) {
         double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
+        if (rate > 29.98) {
+          break;
+        }
+
         double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
         LOGGER.info("{} | {} | {} | {} | {} | {}",
             productNo, balance.productName(), orderCode, balance.presentPrice(),

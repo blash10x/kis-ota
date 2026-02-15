@@ -1,8 +1,8 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
-import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,7 +29,6 @@ public class ReservationOrderListService extends TradingService {
   private final ExternalService externalService;
   private final String accountNo;
   private final String accountProductCode;
-  private AccessToken accessToken;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderListService(KisProperties kisProperties, KisAuthService kisAuthService) {
@@ -42,9 +41,8 @@ public class ReservationOrderListService extends TradingService {
   }
 
   public JsonNode inquireReservationOrder(String date) {
-    if (accessToken == null) {
-      accessToken = getKisAuthService().authorize();
-      headers = buildRequestHeaders(accessToken, TR_ID);
+    if (headers == null) {
+      headers = buildRequestHeaders(TR_ID);
     }
     if (date == null) {
       LocalDate now = LocalDate.now();
