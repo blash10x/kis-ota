@@ -32,12 +32,12 @@ import reactor.netty.transport.logging.AdvancedByteBufFormat;
 /**
  * @author myungsik.sung@gmail.com
  */
-final class ExternalService {
+public final class ExternalService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExternalService.class);
   private final Duration timeout = Duration.ofMillis(500);
   private final WebClient webClient;
 
-  ExternalService(String baseUrl) {
+  public ExternalService(String baseUrl) {
     this.webClient = createWebClient(baseUrl);
   }
 

@@ -2,6 +2,7 @@ package blash10x.kis.ota.controller;
 
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.service.BalanceService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BalanceController {
   private final BalanceService balanceService;
 
+  @Operation(summary = "주식잔고조회")
   @GetMapping(value = "/inquire-balance", produces = MediaType.APPLICATION_JSON_VALUE)
   public List<Balance> inquireBalance() {
     return balanceService.inquireBalances();
