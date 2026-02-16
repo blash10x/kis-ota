@@ -3,8 +3,10 @@ package blash10x.kis.ota.service;
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.ProductProperties;
 import blash10x.kis.ota.model.Balance;
+import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
+import blash10x.kis.ota.model.ProductPrice;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
@@ -33,19 +35,22 @@ public class ReservationOrderService extends TradingService {
   private final double applyRate;
   private final Map<String, Product> products;
   private final BalanceService balanceService;
+  private final RealtimePriceService  realtimePriceService;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderService(
       KisProperties kisProperties,
       ProductProperties productProperties,
       KisAuthService kisAuthService,
-      BalanceService balanceService) {
+      BalanceService balanceService,
+      RealtimePriceService  realtimePriceService) {
     super(kisProperties, kisAuthService);
     repetitions = productProperties.getRepetitions();
     baseRate = productProperties.getBaseRate();
     applyRate = productProperties.getApplyRate();
     products = productProperties.getProducts();
     this.balanceService = balanceService;
+    this.realtimePriceService = realtimePriceService;
   }
 
   public List<ReservationOrderSeq> orderReservation(
@@ -61,74 +66,86 @@ public class ReservationOrderService extends TradingService {
 
     List<ReservationOrderSeq> results = new ArrayList<>();
     orderProductNos.forEach(productNo -> {
-      Balance balance = balances.get(productNo);
+      ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
       Product product = products.get(productNo);
-      int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
-      int size = Math.min(orderPossibleQuantity, repetitions);
+      Balance balance = balances.get(productNo);
+      int size = getOrderSize(balance);
       for (int i = 1; i <= size; i++) {
         double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
         if (rate > 29.98) {
           break;
         }
 
-        double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
+        double orderUnitPrice = Double.parseDouble(productPrice.presentPrice()) * rate;
+        int tickPrice = calculateTickPrice(orderUnitPrice, orderCode);
+
         LOGGER.info("{} | {} | {} | {} | {} | {}",
-            productNo, balance.productName(), orderCode, balance.presentPrice(),
+            productNo, product.productName(), orderCode, productPrice.presentPrice(),
             String.format("%2.3f", (rate - 1.0) * 100),
-            String.format("%,8.2f", orderUnitPrice));
-        ReservationOrderSeq result = orderReservation(balance.productNo(), orderUnitPrice, orderCode, real);
+            String.format("%,8d", tickPrice));
+        ReservationOrderSeq result = orderReservation(product.productNo(), tickPrice, orderCode, real);
         results.add(result);
       }
     });
     return results;
   }
 
+  private int getOrderSize(Balance balance) {
+    if (balance == null) {
+      return repetitions;
+    }
+    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
+    return  Math.min(orderPossibleQuantity, repetitions);
+  }
+
   private ReservationOrderSeq orderReservation(
-      String productNo, double orderUnitPrice, OrderCode orderCode, boolean real) {
-    Request request = Request.builder()
+      String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
+    if (!real) {
+      return new ReservationOrderSeq("Mock");
+    }
+
+    Request request = buildRequest(productNo, "" + orderUnitPrice, orderCode);
+    Response response = post(PATH, headers, null, request, Response.class).block();
+    return response != null ? response.output : new ReservationOrderSeq("Unknown");
+  }
+
+  private Request buildRequest(
+      String productNo, String orderUnitPrice, OrderCode orderCode) {
+    return Request.builder()
         .accountNo(getAccountNo())
         .accountProductCode(getAccountProductCode())
         .productNo(productNo)
-        .orderUnitPrice("" + calculateTickPrice(orderUnitPrice, orderCode))
+        .orderUnitPrice(orderUnitPrice)
         .sellBuyDivisionCode(orderCode.getCode())
         .orderQuantity(ORD_QTY)
         .orderDivisionCode(ORD_DVSN_CD)
         .orderObjectBalanceDivisionCode(ORD_OBJT_CBLC_DVSN_CD)
         .build();
-
-    LOGGER.info("ReservationOrder: [{}] {}: {}",
-        productNo, orderCode, String.format("%,8d", Integer.parseInt(request.orderUnitPrice)));
-
-    Response response = post(PATH, headers, null, request, Response.class).block();
-    return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }
 
   @Builder
   private record Request(
-      @JsonProperty("CANO")
-      String accountNo,
-      @JsonProperty("ACNT_PRDT_CD")
-      String accountProductCode,
+      @JsonProperty("CANO") String accountNo,
+      @JsonProperty("ACNT_PRDT_CD") String accountProductCode,
       @JsonProperty("PDNO") // 상품번호
-      String productNo,
+          String productNo,
       @JsonProperty("ORD_QTY") // 주문수량
-      String orderQuantity,
+          String orderQuantity,
       @JsonProperty("ORD_UNPR") // 주문단가
-      String orderUnitPrice,
+          String orderUnitPrice,
       @JsonProperty("SLL_BUY_DVSN_CD") // 매도매수구분코드: 01:매도, 02:매수
-      String sellBuyDivisionCode,
+          String sellBuyDivisionCode,
       @JsonProperty("ORD_DVSN_CD") // 주문구분코드: 지정가:00
-      String orderDivisionCode,
+          String orderDivisionCode,
       @JsonProperty("ORD_OBJT_CBLC_DVSN_CD") // 주문대상잔고구분코드: 현금:10
-      String orderObjectBalanceDivisionCode) {}
+          String orderObjectBalanceDivisionCode) {}
 
   private record Response(
       @JsonProperty("rt_cd") // 성공 실패 여부
-      String rt_cd,
+          String rt_cd,
       @JsonProperty("msg_cd") // 응답코드
-      String msg_cd,
+          String msg_cd,
       @JsonProperty("msg1") // 응답메세지
-      String msg,
-      @JsonProperty("output")
-      ReservationOrderSeq output) {}
+          String msg,
+      @JsonProperty("output") ReservationOrderSeq output) {}
 }

@@ -87,13 +87,13 @@ public class KisAuthService {
     String appKey = kisProperties.getAppKey();
     String appSecret = kisProperties.getAppSecret();
 
-    GetAccessTokenRequest requestBody = GetAccessTokenRequest.builder()
+    GetAccessTokenRequest request = GetAccessTokenRequest.builder()
         .grantType("client_credentials")
         .appKey(appKey)
         .appSecret(appSecret)
         .build();
     return externalService
-        .post(PATH, null, null, requestBody, AccessToken.class)
+        .post(PATH, null, null, request, AccessToken.class)
         .retry(2)
         .mapNotNull(HttpEntity::getBody)
         .block();

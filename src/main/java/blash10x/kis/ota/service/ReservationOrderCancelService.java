@@ -29,14 +29,17 @@ public class ReservationOrderCancelService extends TradingService {
       headers = buildRequestHeaders(TR_ID);
     }
 
-    Request request = Request.builder()
+    Request request = buildRequest(reservationOrderSeq);
+    Response response = post(PATH, headers, null, request, Response.class).block();
+    return response != null ? response.output : new NormalProcessingResult("Unknown");
+  }
+
+  private Request buildRequest(String reservationOrderSeq) {
+    return Request.builder()
         .accountNo(getAccountNo())
         .accountProductCode(getAccountProductCode())
         .reservationOrderSeq(reservationOrderSeq)
         .build();
-
-    Response response = post(PATH, headers, null, request, Response.class).block();
-    return response != null ? response.output : new NormalProcessingResult("Unknown");
   }
 
   @Builder

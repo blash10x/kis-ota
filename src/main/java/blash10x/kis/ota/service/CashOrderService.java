@@ -2,7 +2,6 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.ProductProperties;
-import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
@@ -34,10 +33,7 @@ public class CashOrderService extends TradingService {
   private final double baseRate;
   private final double applyRate;
   private final Map<String, Product> products;
-  private final ExternalService externalService;
   private final BalanceService balanceService;
-  private final String accountNo;
-  private final String accountProductCode;
   private MultiValueMap<String, String> headers;
 
   public CashOrderService(
@@ -51,11 +47,6 @@ public class CashOrderService extends TradingService {
     applyRate = productProperties.getApplyRate();
     products = productProperties.getProducts();
     this.balanceService = balanceService;
-
-    String host = kisProperties.getHost();
-    externalService = new ExternalService(host);
-    accountNo = kisProperties.getAccountNo();
-    accountProductCode = kisProperties.getAccountProductCode();
   }
 
   public List<ReservationOrderSeq> orderCash(
@@ -94,21 +85,29 @@ public class CashOrderService extends TradingService {
 
   private ReservationOrderSeq orderCash(
       String productNo, double orderUnitPrice, OrderCode orderCode, boolean real) {
-    Request request = Request.builder()
-        .accountNo(accountNo)
-        .accountProductCode(accountProductCode)
-        .productNo(productNo)
-        .orderDivision(ORD_DVSN)
-        .orderQuantity(ORD_QTY)
-        .orderUnitPrice("" + calculateTickPrice(orderUnitPrice, orderCode))
-        .exchangeIdDivisionCode(EXCG_ID_DVSN_CD)
-        .build();
+    int tickPrice = calculateTickPrice(orderUnitPrice, orderCode);
+    Request request = buildRequest(productNo, "" + tickPrice);
 
-    LOGGER.info("ReservationOrder: [{}] {}: {}",
-        productNo, orderCode, String.format("%,8d", Integer.parseInt(request.orderUnitPrice)));
+    LOGGER.info(
+        "ReservationOrder: [{}] {}: {}", productNo, orderCode, String.format("%,8d", tickPrice));
+    if (!real) {
+      return new ReservationOrderSeq("Mock");
+    }
 
     Response response = post(PATH, headers, null, request, Response.class).block();
     return response != null ? response.output : new ReservationOrderSeq("Unknown");
+  }
+
+  private Request buildRequest(String productNo, String orderUnitPrice) {
+    return Request.builder()
+        .accountNo(getAccountNo())
+        .accountProductCode(getAccountProductCode())
+        .productNo(productNo)
+        .orderDivision(ORD_DVSN)
+        .orderQuantity(ORD_QTY)
+        .orderUnitPrice(orderUnitPrice)
+        .exchangeIdDivisionCode(EXCG_ID_DVSN_CD)
+        .build();
   }
 
   @Builder

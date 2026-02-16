@@ -4,6 +4,7 @@ import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,12 @@ public class RealtimePriceService extends TradingService {
 
   public RealtimePriceService(KisProperties kisProperties, KisAuthService kisAuthService) {
     super(kisProperties, kisAuthService);
+  }
+
+  public List<ProductPrice> inquirePrices(MarketCode marketDivisionCode, List<String> productNos) {
+    return productNos.stream()
+        .map(productNo -> inquirePrice(marketDivisionCode, productNo))
+        .toList();
   }
 
   public ProductPrice inquirePrice(MarketCode marketDivisionCode, String productNo) {
