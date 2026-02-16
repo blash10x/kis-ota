@@ -26,8 +26,6 @@ public class BalanceService extends TradingService {
   private static final String TR_ID = "TTTC8434R";
 
   private final ExternalService externalService;
-  private final String accountNo;
-  private final String accountProductCode;
   private MultiValueMap<String, String> headers;
 
   public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
@@ -35,8 +33,6 @@ public class BalanceService extends TradingService {
 
     String host = kisProperties.getHost();
     externalService = new ExternalService(host);
-    accountNo = kisProperties.getAccountNo();
-    accountProductCode = kisProperties.getAccountProductCode();
   }
 
   public List<Balance> inquireBalances() {
@@ -63,8 +59,8 @@ public class BalanceService extends TradingService {
 
   private MultiValueMap<String, String> buildRequestParams() {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-    queryParams.add("CANO", accountNo);
-    queryParams.add("ACNT_PRDT_CD", accountProductCode);
+    queryParams.add("CANO", getAccountNo());
+    queryParams.add("ACNT_PRDT_CD", getAccountProductCode());
 
     queryParams.add("AFHR_FLPR_YN", "N");
     queryParams.add("OFL_YN", "");

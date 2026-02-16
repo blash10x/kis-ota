@@ -38,8 +38,6 @@ public class ReservationOrderService extends TradingService {
   private final Map<String, Product> products;
   private final ExternalService externalService;
   private final BalanceService balanceService;
-  private final String accountNo;
-  private final String accountProductCode;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderService(
@@ -56,8 +54,6 @@ public class ReservationOrderService extends TradingService {
 
     String host = kisProperties.getHost();
     externalService = new ExternalService(host);
-    accountNo = kisProperties.getAccountNo();
-    accountProductCode = kisProperties.getAccountProductCode();
   }
 
   public List<ReservationOrderSeq> orderReservation(
@@ -98,8 +94,8 @@ public class ReservationOrderService extends TradingService {
   private ReservationOrderSeq orderReservation(
       String productNo, double orderUnitPrice, OrderCode orderCode, boolean real) {
     Request request = Request.builder()
-        .accountNo(accountNo)
-        .accountProductCode(accountProductCode)
+        .accountNo(getAccountNo())
+        .accountProductCode(getAccountProductCode())
         .productNo(productNo)
         .orderUnitPrice("" + calculateTickPrice(orderUnitPrice, orderCode))
         .sellBuyDivisionCode(orderCode.getCode())

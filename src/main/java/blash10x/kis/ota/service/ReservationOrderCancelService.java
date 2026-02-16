@@ -23,8 +23,6 @@ public class ReservationOrderCancelService extends TradingService {
   private static final String TR_ID = "CTSC0009U";
 
   private final ExternalService externalService;
-  private final String accountNo;
-  private final String accountProductCode;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderCancelService(
@@ -34,8 +32,6 @@ public class ReservationOrderCancelService extends TradingService {
 
     String host = kisProperties.getHost();
     externalService = new ExternalService(host);
-    accountNo = kisProperties.getAccountNo();
-    accountProductCode = kisProperties.getAccountProductCode();
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
@@ -44,8 +40,8 @@ public class ReservationOrderCancelService extends TradingService {
     }
 
     Request request = Request.builder()
-        .accountNo(accountNo)
-        .accountProductCode(accountProductCode)
+        .accountNo(getAccountNo())
+        .accountProductCode(getAccountProductCode())
         .reservationOrderSeq(reservationOrderSeq)
         .build();
 

@@ -27,8 +27,6 @@ public class ReservationOrderListService extends TradingService {
   private static final String TR_ID = "CTSC0004R";
 
   private final ExternalService externalService;
-  private final String accountNo;
-  private final String accountProductCode;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderListService(KisProperties kisProperties, KisAuthService kisAuthService) {
@@ -36,8 +34,6 @@ public class ReservationOrderListService extends TradingService {
 
     String host = kisProperties.getHost();
     externalService = new ExternalService(host);
-    accountNo = kisProperties.getAccountNo();
-    accountProductCode = kisProperties.getAccountProductCode();
   }
 
   public JsonNode inquireReservationOrder(String date) {
@@ -64,8 +60,8 @@ public class ReservationOrderListService extends TradingService {
 
   private MultiValueMap<String, String> buildRequestParams(String startDate, String endDate) {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-    queryParams.add("CANO", accountNo);
-    queryParams.add("ACNT_PRDT_CD", accountProductCode);
+    queryParams.add("CANO", getAccountNo());
+    queryParams.add("ACNT_PRDT_CD", getAccountProductCode());
 
     queryParams.add("RSVN_ORD_ORD_DT", startDate);
     queryParams.add("RSVN_ORD_END_DT", endDate);

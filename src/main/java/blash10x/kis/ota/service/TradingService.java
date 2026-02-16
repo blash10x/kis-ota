@@ -17,14 +17,29 @@ import org.springframework.util.MultiValueMap;
 abstract class TradingService {
   private final KisProperties kisProperties;
   private final KisAuthService kisAuthService;
+  private final String appKey;
+  private final String appSecret;
+  private final String accountNo;
+  private final String accountProductCode;
+  private AccessToken accessToken;
+
+  public TradingService(KisProperties kisProperties, KisAuthService kisAuthService) {
+    this.kisProperties = kisProperties;
+    this.kisAuthService = kisAuthService;
+
+    appKey = kisProperties.getAppKey();
+    appSecret = kisProperties.getAppSecret();
+    accountNo = kisProperties.getAccountNo();
+    accountProductCode = kisProperties.getAccountProductCode();
+  }
 
   MultiValueMap<String, String> buildRequestHeaders(String trId) {
-    AccessToken accessToken = getKisAuthService().authorize();
+    if (accessToken == null) {
+      accessToken = getKisAuthService().authorize();
+    }
 
     String authorization = accessToken.accessToken();
     String tokenType = accessToken.tokenType();
-    String appKey = kisProperties.getAppKey();
-    String appSecret = kisProperties.getAppSecret();
 
     MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
     headers.set(HttpHeaders.AUTHORIZATION, tokenType + " " + authorization);
