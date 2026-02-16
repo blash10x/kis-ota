@@ -2,7 +2,6 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.ProductProperties;
-import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
@@ -14,11 +13,8 @@ import java.util.Map;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -36,7 +32,6 @@ public class ReservationOrderService extends TradingService {
   private final double baseRate;
   private final double applyRate;
   private final Map<String, Product> products;
-  private final ExternalService externalService;
   private final BalanceService balanceService;
   private MultiValueMap<String, String> headers;
 
@@ -51,9 +46,6 @@ public class ReservationOrderService extends TradingService {
     applyRate = productProperties.getApplyRate();
     products = productProperties.getProducts();
     this.balanceService = balanceService;
-
-    String host = kisProperties.getHost();
-    externalService = new ExternalService(host);
   }
 
   public List<ReservationOrderSeq> orderReservation(
@@ -107,15 +99,8 @@ public class ReservationOrderService extends TradingService {
     LOGGER.info("ReservationOrder: [{}] {}: {}",
         productNo, orderCode, String.format("%,8d", Integer.parseInt(request.orderUnitPrice)));
 
-    Mono<ResponseEntity<Response>> mono = real
-        ? externalService.post(PATH, headers, null, request, Response.class)
-        : Mono.empty();
-    Response response = mono.mapNotNull(HttpEntity::getBody).block();
-    if (response != null) {
-      LOGGER.info("Response: {}", response.msg);
-      return response.output;
-    }
-    return new ReservationOrderSeq("Unknown");
+    Response response = post(PATH, headers, null, request, Response.class).block();
+    return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }
 
   @Builder

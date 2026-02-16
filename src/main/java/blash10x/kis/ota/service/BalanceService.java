@@ -1,7 +1,6 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -9,12 +8,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -25,14 +21,10 @@ public class BalanceService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/inquire-balance";
   private static final String TR_ID = "TTTC8434R";
 
-  private final ExternalService externalService;
   private MultiValueMap<String, String> headers;
 
   public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
     super(kisProperties, kisAuthService);
-
-    String host = kisProperties.getHost();
-    externalService = new ExternalService(host);
   }
 
   public List<Balance> inquireBalances() {
@@ -41,15 +33,8 @@ public class BalanceService extends TradingService {
     }
 
     MultiValueMap<String, String> queryParams = buildRequestParams();
-    Mono<ResponseEntity<Response>> mono =
-        externalService.get(PATH, headers, queryParams, Response.class);
-
-    Response response = mono.mapNotNull(HttpEntity::getBody).block();
-    if (response != null) {
-      LOGGER.info("Response: {}", response.msg);
-      return response.output;
-    }
-    return List.of();
+    Response response = get(PATH, headers, queryParams, Response.class).block();
+    return response != null ? response.output : List.of();
   }
 
   public Map<String, Balance> getBalances() {

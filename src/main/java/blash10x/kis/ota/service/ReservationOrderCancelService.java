@@ -1,17 +1,13 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.model.NormalProcessingResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -22,16 +18,10 @@ public class ReservationOrderCancelService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-rvsecncl";
   private static final String TR_ID = "CTSC0009U";
 
-  private final ExternalService externalService;
   private MultiValueMap<String, String> headers;
 
-  public ReservationOrderCancelService(
-      KisProperties kisProperties,
-      KisAuthService kisAuthService) {
+  public ReservationOrderCancelService(KisProperties kisProperties, KisAuthService kisAuthService) {
     super(kisProperties, kisAuthService);
-
-    String host = kisProperties.getHost();
-    externalService = new ExternalService(host);
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
@@ -45,15 +35,8 @@ public class ReservationOrderCancelService extends TradingService {
         .reservationOrderSeq(reservationOrderSeq)
         .build();
 
-    LOGGER.info("ReservationOrderCancel: {}", reservationOrderSeq);
-
-    Mono<ResponseEntity<Response>> mono = externalService.post(PATH, headers, null, request, Response.class);
-    Response response = mono.mapNotNull(HttpEntity::getBody).block();
-    if (response != null) {
-      LOGGER.info("Response: {}", response.msg);
-      return response.output;
-    }
-    return new NormalProcessingResult("Unknown");
+    Response response = post(PATH, headers, null, request, Response.class).block();
+    return response != null ? response.output : new NormalProcessingResult("Unknown");
   }
 
   @Builder

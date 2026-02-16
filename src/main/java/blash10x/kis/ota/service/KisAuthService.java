@@ -1,8 +1,9 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
+import blash10x.kis.ota.model.AccessToken;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,25 +14,29 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import lombok.Builder;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 /**
  * @author myungsik.sung@gmail.com
  */
 @Service
-@RequiredArgsConstructor
+@Data
 public class KisAuthService {
   private static final Logger LOGGER = LoggerFactory.getLogger(KisAuthService.class);
+  private static final String PATH = "/oauth2/tokenP";
   private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
   private final KisProperties kisProperties;
+  private final ExternalService externalService;
+
+  public KisAuthService(KisProperties kisProperties) {
+    this.kisProperties = kisProperties;
+    String host = kisProperties.getHost();
+    externalService = new ExternalService(host);
+  }
 
   public AccessToken authorize() {
     AccessToken accessToken = readAccessToken();
@@ -79,27 +84,19 @@ public class KisAuthService {
   }
 
   private AccessToken getAccessToken() {
-    String host = kisProperties.getHost();
     String appKey = kisProperties.getAppKey();
     String appSecret = kisProperties.getAppSecret();
 
-    WebClient webClient = WebClient.builder()
-        .baseUrl(host)
-        .build();
-
-    GetAccessTokenRequest getAccessTokenRequest = GetAccessTokenRequest.builder()
+    GetAccessTokenRequest requestBody = GetAccessTokenRequest.builder()
         .grantType("client_credentials")
         .appKey(appKey)
         .appSecret(appSecret)
         .build();
-
-    Mono<ResponseEntity<AccessToken>> mono = webClient.post()
-        .uri("/oauth2/tokenP")
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(getAccessTokenRequest)
-        .retrieve()
-        .toEntity(AccessToken.class);
-    return mono.mapNotNull(HttpEntity::getBody).block();
+    return externalService
+        .post(PATH, null, null, requestBody, AccessToken.class)
+        .retry(2)
+        .mapNotNull(HttpEntity::getBody)
+        .block();
   }
 
   @Builder

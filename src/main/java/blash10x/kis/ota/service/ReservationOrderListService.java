@@ -1,7 +1,6 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,12 +9,9 @@ import java.time.LocalDate;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -26,14 +22,10 @@ public class ReservationOrderListService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-ccnl";
   private static final String TR_ID = "CTSC0004R";
 
-  private final ExternalService externalService;
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderListService(KisProperties kisProperties, KisAuthService kisAuthService) {
     super(kisProperties, kisAuthService);
-
-    String host = kisProperties.getHost();
-    externalService = new ExternalService(host);
   }
 
   public JsonNode inquireReservationOrder(String date) {
@@ -47,15 +39,8 @@ public class ReservationOrderListService extends TradingService {
     date = date.replace("-", "");
 
     MultiValueMap<String, String> queryParams = buildRequestParams(date, date);
-    Mono<ResponseEntity<JsonNode>> mono =
-        externalService.get(PATH, headers, queryParams, JsonNode.class);
-
-    JsonNode response = mono.mapNotNull(HttpEntity::getBody).block();
-    if (response != null) {
-      LOGGER.info("Response: {}", response);
-      return response;
-    }
-    return JsonNodes.createEmptyObjectNode();
+    JsonNode response = get(PATH, headers, queryParams, JsonNode.class).block();
+    return response != null ? response : JsonNodes.createEmptyObjectNode();
   }
 
   private MultiValueMap<String, String> buildRequestParams(String startDate, String endDate) {
