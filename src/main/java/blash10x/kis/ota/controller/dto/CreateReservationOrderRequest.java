@@ -10,6 +10,6 @@ import java.util.List;
  * @author myungsik.sung@gmail.com
  */
 public record CreateReservationOrderRequest(
-    @NotEmpty List<String> productNo,
+    @NotEmpty List<String> productNos,
     @NotNull OrderCode orderCode,
     @Schema(defaultValue = "false") @NotNull Boolean real) {}

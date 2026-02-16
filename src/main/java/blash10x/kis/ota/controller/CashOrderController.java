@@ -27,6 +27,6 @@ public class CashOrderController {
   @PostMapping(value = "/order-cash")
   public List<ReservationOrderSeq> orderReservation(
       @RequestBody CreateReservationOrderRequest request) {
-    return service.orderCash(request.productNo(), request.orderCode(), request.real());
+    return service.orderCash(request.productNos(), request.orderCode(), request.real());
   }
 }

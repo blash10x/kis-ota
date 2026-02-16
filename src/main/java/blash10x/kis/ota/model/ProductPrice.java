@@ -25,4 +25,5 @@ public record ProductPrice(
     @Schema(description = "피벗 2차 디지지 가격") @JsonProperty("pvt_scnd_dmsp_prc")
         String pvt2ndDeSupPrice,
     @Schema(description = "디저항 값") @JsonProperty("dmrs_val") String deResPrice,
-    @Schema(description = "디지지 값") @JsonProperty("dmsp_val") String deSupPrice) {}
+    @Schema(description = "디지지 값") @JsonProperty("dmsp_val") String deSupPrice,
+    @Schema(description = "주식 단축 종목코드") @JsonProperty("stck_shrn_iscd") String shortCode) {}

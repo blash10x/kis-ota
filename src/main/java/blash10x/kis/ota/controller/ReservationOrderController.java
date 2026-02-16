@@ -27,6 +27,6 @@ public class ReservationOrderController {
   @PostMapping(value = "/order-resv")
   public List<ReservationOrderSeq> orderReservation(
       @RequestBody CreateReservationOrderRequest request) {
-    return service.orderReservation(request.productNo(), request.orderCode(), request.real());
+    return service.orderReservation(request.productNos(), request.orderCode(), request.real());
   }
 }

@@ -1,10 +1,13 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.ProductProperties;
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.Balance;
+import blash10x.kis.ota.model.MarketCode;
+import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
+import blash10x.kis.ota.model.ProductPrice;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
@@ -29,24 +32,21 @@ public class CashOrderService extends TradingService {
   private static final String ORD_QTY = "1"; // 주문수량
   private static final String EXCG_ID_DVSN_CD = "SOR"; // 거래소ID구분코드: SOR: Smart Order Routing
 
-  private final int repetitions;
-  private final double baseRate;
-  private final double applyRate;
-  private final Map<String, Product> products;
+  private final OtaProperties otaProperties;
   private final BalanceService balanceService;
+  private final RealtimePriceService realtimePriceService;
   private MultiValueMap<String, String> headers;
 
   public CashOrderService(
       KisProperties kisProperties,
-      ProductProperties productProperties,
+      OtaProperties otaProperties,
       KisAuthService kisAuthService,
-      BalanceService balanceService) {
+      BalanceService balanceService,
+      RealtimePriceService  realtimePriceService) {
     super(kisProperties, kisAuthService);
-    repetitions = productProperties.getRepetitions();
-    baseRate = productProperties.getBaseRate();
-    applyRate = productProperties.getApplyRate();
-    products = productProperties.getProducts();
+    this.otaProperties = otaProperties;
     this.balanceService = balanceService;
+    this.realtimePriceService = realtimePriceService;
   }
 
   public List<ReservationOrderSeq> orderCash(
@@ -55,45 +55,69 @@ public class CashOrderService extends TradingService {
     headers = buildRequestHeaders(trId);
 
     Map<String, Balance> balances = balanceService.getBalances();
+    Map<String, Product> products = otaProperties.getProducts();
+
     List<String> orderProductNos  = orderCode == OrderCode.SELL
         ? productNos.stream().filter(balances::containsKey).toList()
         : productNos.stream().filter(products::containsKey).toList();
+    LOGGER.info("orderProductNos={}", orderProductNos);
 
     List<ReservationOrderSeq> results = new ArrayList<>();
     orderProductNos.forEach(productNo -> {
-      Balance balance = balances.get(productNo);
+      ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
       Product product = products.get(productNo);
-      int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
-      int size = Math.min(orderPossibleQuantity, repetitions);
+      Balance balance = balances.get(productNo);
+      int size = getOrderSize(balance, orderCode);
       for (int i = 1; i <= size; i++) {
-        double rate = calculateRate(i, baseRate, product.beta() * applyRate, orderCode);
-        if (rate > 29.98) {
+        double rate = calculateRate(i, product, productPrice, orderCode);
+        if (rate > 1.2998 || rate < 0.7002) {
           break;
         }
 
-        double orderUnitPrice = Double.parseDouble(balance.presentPrice()) * rate;
-        LOGGER.info("{} | {} | {} | {} | {} | {}",
-            productNo, balance.productName(), orderCode, balance.presentPrice(),
+        double orderUnitPrice = Double.parseDouble(productPrice.presentPrice()) * rate;
+        int tickPrice = calculateTickPrice(orderUnitPrice, orderCode);
+
+        LOGGER.info("{} | {} | {} | {} ({}) | {} | {} | {}",
+            i, productNo, product.productName(), orderCode, product.beta(),
+            productPrice.presentPrice(),
             String.format("%2.3f", (rate - 1.0) * 100),
-            String.format("%,8.2f", orderUnitPrice));
-        ReservationOrderSeq result = orderCash(balance.productNo(), orderUnitPrice, orderCode, real);
+            String.format("%,8d", tickPrice));
+        ReservationOrderSeq result = orderCash(balance.productNo(), tickPrice, orderCode, real);
         results.add(result);
       }
     });
     return results;
   }
 
-  private ReservationOrderSeq orderCash(
-      String productNo, double orderUnitPrice, OrderCode orderCode, boolean real) {
-    int tickPrice = calculateTickPrice(orderUnitPrice, orderCode);
-    Request request = buildRequest(productNo, "" + tickPrice);
+  private int getOrderSize(Balance balance, OrderCode orderCode) {
+    Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
+    if (orderCode == OrderCode.BUY) {
+      return maxRepetitions.get(orderCode);
+    }
+    if (balance == null) {
+      return 0;
+    }
+    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
+    return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
+  }
 
-    LOGGER.info(
-        "ReservationOrder: [{}] {}: {}", productNo, orderCode, String.format("%,8d", tickPrice));
+  private double calculateRate(int i, Product product, ProductPrice productPrice, OrderCode code) {
+    MarketName marketName = MarketName.valueOf(productPrice.marketName());
+    double baseRate = otaProperties.getBaseRates().get(marketName);
+    double stepRate = otaProperties.getStepRates().get(marketName);
+    double beta = product.beta();
+
+    int direction = OrderCode.SELL == code ? 1 : -1;
+    return (100.0 + direction * (baseRate + beta * stepRate * i)) / 100;
+  }
+
+  private ReservationOrderSeq orderCash(
+      String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
     if (!real) {
       return new ReservationOrderSeq("Mock");
     }
 
+    Request request = buildRequest(productNo, "" + orderUnitPrice);
     Response response = post(PATH, headers, null, request, Response.class).block();
     return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }

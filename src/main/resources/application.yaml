@@ -2,7 +2,7 @@ spring:
   application:
     name: ota
   config:
-    import: classpath:kis_devlp.yaml,classpath:product.yaml
+    import: classpath:kis_devlp.yaml,classpath:ota.yaml
 
 springdoc:
   default-flat-param-object: true # Default: false, To default flatten parameter.
@@ -18,3 +18,7 @@ management:
     health.show-details: always
   endpoints:
     web.exposure.include: health, info, env, metrics, caches, threaddump
+
+logging:
+  level:
+    blash10x.kis: TRACE
