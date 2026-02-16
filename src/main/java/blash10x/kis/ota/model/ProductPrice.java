@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * @author Myungsik Sung (myungsik.sung@nol-universe.com)
+ * @author myungsik.sung@gmail.com
  */
 public record ProductPrice(
     @Schema(description = "주식 현재가") @JsonProperty("stck_prpr") String presentPrice,
