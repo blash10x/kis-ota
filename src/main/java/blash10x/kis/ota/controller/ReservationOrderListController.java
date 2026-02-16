@@ -16,14 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping("/trading")
+@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class ReservationOrderListController {
-  private final ReservationOrderListService reservationOrderListService;
+  private final ReservationOrderListService service;
 
   @Operation(summary = "주식예약주문조회")
-  @GetMapping(value = "/inquire-resv-order", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/inquire-resv-order")
   public JsonNode inquireReservationOrder(@RequestParam(required = false) String date) {
-    return reservationOrderListService.inquireReservationOrder(date);
+    return service.inquireReservationOrder(date);
   }
 }

@@ -17,13 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping("/trading")
+@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class RealtimePriceController {
   private final RealtimePriceService service;
 
   @Operation(summary = "주식현재가 시세")
-  @GetMapping(value = "/inquire-price", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/inquire-price")
   public ProductPrice inquireBalance(MarketCode marketCode, String productNo) {
     return service.inquirePrice(marketCode, productNo);
   }

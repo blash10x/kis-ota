@@ -18,16 +18,15 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping("/trading")
+@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class ReservationOrderController {
-  private final ReservationOrderService reservationOrderService;
+  private final ReservationOrderService service;
 
   @Operation(summary = "주식예약주문")
-  @PostMapping(value = "/order-resv", produces = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(value = "/order-resv")
   public List<ReservationOrderSeq> orderReservation(
       @RequestBody CreateReservationOrderRequest request) {
-    return reservationOrderService.orderReservation(
-        request.productNo(), request.orderCode(), request.real());
+    return service.orderReservation(request.productNo(), request.orderCode(), request.real());
   }
 }

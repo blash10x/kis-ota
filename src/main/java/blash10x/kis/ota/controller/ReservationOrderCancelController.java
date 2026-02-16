@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping("/trading")
+@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class ReservationOrderCancelController {
-  private final ReservationOrderCancelService reservationOrderCancelService;
+  private final ReservationOrderCancelService service;
 
   @Operation(summary = "주식예약주문취소")
-  @GetMapping(value = "/cancel-resv-order", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/cancel-resv-order")
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
-    return reservationOrderCancelService.cancelReservationOrder(reservationOrderSeq);
+    return service.cancelReservationOrder(reservationOrderSeq);
   }
 }

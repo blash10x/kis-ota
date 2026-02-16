@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping("/trading")
+@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class BalanceController {
   private final BalanceService balanceService;
 
   @Operation(summary = "주식잔고조회")
-  @GetMapping(value = "/inquire-balance", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/inquire-balance")
   public List<Balance> inquireBalance() {
     return balanceService.inquireBalances();
   }
