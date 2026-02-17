@@ -5,11 +5,13 @@ import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +100,18 @@ abstract class TradingService {
     headers.set("appsecret", appSecret);
     headers.set("tr_id", trId);
     return headers;
+  }
+
+  int getOrderSize(Balance balance, OrderCode orderCode) {
+    Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
+    if (orderCode == OrderCode.BUY) {
+      return maxRepetitions.get(orderCode);
+    }
+    if (balance == null) {
+      return 0;
+    }
+    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
+    return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
   }
 
   double calculateRate(int i, Product product, ProductPrice productPrice, OrderCode orderCode) {

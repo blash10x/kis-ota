@@ -100,18 +100,6 @@ public class CashOrderService extends TradingService {
     return results;
   }
 
-  private int getOrderSize(Balance balance, OrderCode orderCode) {
-    Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
-    if (orderCode == OrderCode.BUY) {
-      return maxRepetitions.get(orderCode);
-    }
-    if (balance == null) {
-      return 0;
-    }
-    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
-    return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
-  }
-
   private ReservationOrderSeq orderCash(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
     if (!real) {
