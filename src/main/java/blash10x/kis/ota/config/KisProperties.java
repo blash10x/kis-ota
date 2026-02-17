@@ -17,4 +17,5 @@ public class KisProperties {
   private String appSecret;
   private String accountNo;
   private String accountProductCode;
+  private String userId;
 }

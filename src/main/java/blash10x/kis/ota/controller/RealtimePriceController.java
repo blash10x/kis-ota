@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
-@RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/quotations", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class RealtimePriceController {
   private final RealtimePriceService service;
 
   @Operation(summary = "주식현재가 시세")
   @GetMapping(value = "/inquire-price")
-  public List<ProductPrice> inquireBalance(
+  public List<ProductPrice> inquirePrices(
       MarketCode marketCode,
       @Schema(description = "종목코드 (',' 구분자 복수개 허용: 예, ...&id=123,467,789)",
               example = "005930",
