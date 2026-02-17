@@ -37,19 +37,19 @@ public class ReservationOrderService extends TradingService {
   private MultiValueMap<String, String> headers;
 
   public ReservationOrderService(
-      KisProperties kisProperties,
       OtaProperties otaProperties,
+      KisProperties kisProperties,
       KisAuthService kisAuthService,
       BalanceService balanceService,
       RealtimePriceService  realtimePriceService) {
-    super(kisProperties, kisAuthService);
+    super(otaProperties, kisProperties, kisAuthService);
     this.otaProperties = otaProperties;
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
   }
 
   public List<ReservationOrderSeq> orderReservation(
-      List<String> productNos, OrderCode orderCode, boolean real) {
+      OrderCode orderCode, List<String> productNos, boolean real) {
     if (headers == null) {
       headers = buildRequestHeaders(TR_ID);
     }
@@ -62,30 +62,52 @@ public class ReservationOrderService extends TradingService {
         : productNos.stream().filter(products::containsKey).toList();
     LOGGER.info("orderProductNos={}", orderProductNos);
 
+    if (orderProductNos.isEmpty() && orderCode == OrderCode.SELL) {
+      orderProductNos = balances.keySet().stream().toList();
+    } else if (orderProductNos.isEmpty() && orderCode == OrderCode.BUY) {
+      orderProductNos = products.keySet().stream().toList();
+    }
+
     List<ReservationOrderSeq> results = new ArrayList<>();
-    orderProductNos.forEach(productNo -> {
-      ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
-      Product product = products.get(productNo);
-      Balance balance = balances.get(productNo);
-      int size = getOrderSize(balance, orderCode);
-      for (int i = 1; i <= size; i++) {
-        double rate = calculateRate(i, product, productPrice, orderCode);
-        if (rate > 1.2998 || rate < 0.7002) {
-          break;
-        }
+    orderProductNos.forEach(
+        productNo -> {
+          ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
+          MarketName marketName = MarketName.valueOf(productPrice.marketName());
+          Product product = products.get(productNo);
+          Balance balance = balances.get(productNo);
+          double beta = Math.max(product.beta(), 0.90);
+          int size = getOrderSize(balance, orderCode);
+          for (int i = 1; i <= size; i++) {
+            double rate = calculateRate(i, product, productPrice, orderCode);
+            if (rate > 29.8) {
+              break;
+            }
+            if (rate < 5.0 * beta
+                && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
+              continue;
+            }
 
-        double orderUnitPrice = Double.parseDouble(productPrice.presentPrice()) * rate;
-        int tickPrice = calculateTickPrice(orderUnitPrice, orderCode);
+            int realtimePrice = Integer.parseInt(productPrice.presentPrice());
+            int direction = OrderCode.SELL == orderCode ? 1 : -1;
+            double orderUnitPrice = realtimePrice * (100 + direction * rate) / 100;
+            int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
 
-        LOGGER.info("{} | {} | {} | {} ({}) | {} | {} | {}",
-            i, productNo, product.productName(), orderCode, product.beta(),
-            productPrice.presentPrice(),
-            String.format("%2.3f", (rate - 1.0) * 100),
-            String.format("%,8d", tickPrice));
-        ReservationOrderSeq result = orderReservation(product.productNo(), tickPrice, orderCode, real);
-        results.add(result);
-      }
-    });
+            LOGGER.info(
+                "{} | {} | {} ({}) | {} ({}) | {} | {} | {}",
+                String.format("%2d", i),
+                productNo,
+                product.productName(),
+                marketName,
+                orderCode,
+                product.beta(),
+                String.format("%,6d", realtimePrice),
+                String.format("%2.2f", direction * rate),
+                String.format("%,6d", tickPrice));
+            ReservationOrderSeq result =
+                orderReservation(product.productNo(), tickPrice, orderCode, real);
+            results.add(result);
+          }
+        });
     return results;
   }
 
@@ -99,16 +121,6 @@ public class ReservationOrderService extends TradingService {
     }
     int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
     return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
-  }
-
-  private double calculateRate(int i, Product product, ProductPrice productPrice, OrderCode code) {
-    MarketName marketName = MarketName.valueOf(productPrice.marketName());
-    double baseRate = otaProperties.getBaseRates().get(marketName);
-    double stepRate = otaProperties.getStepRates().get(marketName);
-    double beta = product.beta();
-
-    int direction = OrderCode.SELL == code ? 1 : -1;
-    return (100.0 + direction * (baseRate + beta * stepRate * i)) / 100;
   }
 
   private ReservationOrderSeq orderReservation(

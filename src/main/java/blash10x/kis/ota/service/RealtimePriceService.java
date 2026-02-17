@@ -1,6 +1,7 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -22,8 +23,9 @@ public class RealtimePriceService extends TradingService {
 
   private MultiValueMap<String, String> headers;
 
-  public RealtimePriceService(KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(kisProperties, kisAuthService);
+  public RealtimePriceService(
+      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
+    super(otaProperties, kisProperties, kisAuthService);
   }
 
   public List<ProductPrice> inquirePrices(MarketCode marketDivisionCode, List<String> productNos) {

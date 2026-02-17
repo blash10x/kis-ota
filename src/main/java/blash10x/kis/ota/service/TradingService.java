@@ -1,10 +1,14 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
+import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
+import blash10x.kis.ota.model.Product;
+import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -22,6 +26,7 @@ import reactor.core.publisher.Mono;
 @Data
 abstract class TradingService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TradingService.class);
+  private final OtaProperties otaProperties;
   private final KisProperties kisProperties;
   private final KisAuthService kisAuthService;
   private final String appKey;
@@ -31,7 +36,9 @@ abstract class TradingService {
   private final ExternalService externalService;
   private AccessToken accessToken;
 
-  public TradingService(KisProperties kisProperties, KisAuthService kisAuthService) {
+  public TradingService(
+      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
+    this.otaProperties = otaProperties;
     this.kisProperties = kisProperties;
     this.kisAuthService = kisAuthService;
 
@@ -93,12 +100,33 @@ abstract class TradingService {
     return headers;
   }
 
-  double calculateRate(int i, double base, double beta, OrderCode code) {
-    int direction = OrderCode.SELL == code ? 1 : -1;
-    return (100.0 + direction * (base + beta * i)) / 100;
+  double calculateRate(int i, Product product, ProductPrice productPrice, OrderCode orderCode) {
+    MarketName marketName = MarketName.valueOf(productPrice.marketName());
+    double multipleRate = otaProperties.getMultipleRates().get(orderCode);
+    double baseRate = otaProperties.getBaseRates().get(marketName);
+    double stepRate = otaProperties.getStepRates().get(marketName);
+    double beta = Math.max(product.beta(), 0.95);
+
+    return baseRate + beta * stepRate * multipleRate * i;
   }
 
-  int calculateTickPrice(double price, OrderCode code) {
-    return (int) (OrderCode.SELL == code ? Math.ceil(price / 5.0) : Math.floor(price / 5.0)) * 5;
+  int calculateTickPrice(double price, MarketName marketName, OrderCode code) {
+    int tick;
+    if (price < 2000) {
+      tick = 1;
+    } else if (price < 5000 || marketName == MarketName.ETF) {
+      tick = 5;
+    } else if (price < 20000) {
+      tick = 10;
+    } else if (price < 50000) {
+      tick = 50;
+    } else if (price < 200000) {
+      tick = 100;
+    } else if (price < 500000) {
+      tick = 500;
+    } else {
+      tick = 1000;
+    }
+    return (int) (OrderCode.SELL == code ? Math.ceil(price / tick) : Math.floor(price / tick)) * tick;
   }
 }

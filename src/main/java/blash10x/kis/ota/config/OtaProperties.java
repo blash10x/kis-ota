@@ -18,5 +18,6 @@ public class OtaProperties {
   private Map<OrderCode, Integer> maxRepetitions;
   private Map<MarketName, Double> baseRates;
   private Map<MarketName, Double> stepRates;
+  private Map<OrderCode, Double> multipleRates;
   private Map<String, Product> products;
 }

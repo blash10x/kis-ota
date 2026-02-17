@@ -1,6 +1,7 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,8 +25,9 @@ public class ReservationOrderListService extends TradingService {
 
   private MultiValueMap<String, String> headers;
 
-  public ReservationOrderListService(KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(kisProperties, kisAuthService);
+  public ReservationOrderListService(
+      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
+    super(otaProperties, kisProperties, kisAuthService);
   }
 
   public JsonNode inquireReservationOrder(String date) {
