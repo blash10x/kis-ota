@@ -19,18 +19,13 @@ public class ReservationOrderCancelService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-rvsecncl";
   private static final String TR_ID = "CTSC0009U";
 
-  private MultiValueMap<String, String> headers;
-
   public ReservationOrderCancelService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
-
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     Request request = buildRequest(reservationOrderSeq);
     Response response = post(PATH, headers, null, request, Response.class).block();
     return response != null ? response.output : new NormalProcessingResult("Unknown");

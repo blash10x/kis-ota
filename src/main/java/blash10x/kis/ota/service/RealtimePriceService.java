@@ -21,8 +21,6 @@ public class RealtimePriceService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/inquire-price";
   private static final String TR_ID = "FHKST01010100";
 
-  private MultiValueMap<String, String> headers;
-
   public RealtimePriceService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
@@ -35,10 +33,7 @@ public class RealtimePriceService extends TradingService {
   }
 
   public ProductPrice inquirePrice(MarketCode marketDivisionCode, String productNo) {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
-
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(marketDivisionCode, productNo);
     Response response = get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : null;

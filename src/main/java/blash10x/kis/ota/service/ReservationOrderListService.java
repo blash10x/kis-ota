@@ -23,23 +23,19 @@ public class ReservationOrderListService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-ccnl";
   private static final String TR_ID = "CTSC0004R";
 
-  private MultiValueMap<String, String> headers;
-
   public ReservationOrderListService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
   }
 
   public JsonNode inquireReservationOrder(String date) {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
     if (date == null) {
       LocalDate now = LocalDate.now();
       date = now.toString();
     }
     date = date.replace("-", "");
 
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(date, date);
     JsonNode response = get(PATH, headers, queryParams, JsonNode.class).block();
     return response != null ? response : JsonNodes.createEmptyObjectNode();

@@ -35,7 +35,6 @@ public class CashOrderService extends TradingService {
   private final OtaProperties otaProperties;
   private final BalanceService balanceService;
   private final RealtimePriceService realtimePriceService;
-  private MultiValueMap<String, String> headers;
 
   public CashOrderService(
       OtaProperties otaProperties,
@@ -51,9 +50,6 @@ public class CashOrderService extends TradingService {
 
   public List<ReservationOrderSeq> orderCash(
       List<String> productNos, OrderCode orderCode, boolean real) {
-    String trId = orderCode == OrderCode.SELL ? TR_ID_SELL : TR_ID_BUY;
-    headers = buildRequestHeaders(trId);
-
     Map<String, Balance> balances = balanceService.getBalances();
     Map<String, Product> products = otaProperties.getProducts();
 
@@ -122,6 +118,8 @@ public class CashOrderService extends TradingService {
       return new ReservationOrderSeq("Mock");
     }
 
+    String trId = orderCode == OrderCode.SELL ? TR_ID_SELL : TR_ID_BUY;
+    MultiValueMap<String, String> headers = buildRequestHeaders(trId);
     Request request = buildRequest(productNo, "" + orderUnitPrice);
     Response response = post(PATH, headers, null, request, Response.class).block();
     return response != null ? response.output : new ReservationOrderSeq("Unknown");

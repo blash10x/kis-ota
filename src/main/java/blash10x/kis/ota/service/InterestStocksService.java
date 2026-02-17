@@ -19,18 +19,13 @@ public class InterestStocksService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-stocklist-by-group";
   private static final String TR_ID = "HHKCM113004C6";
 
-  private MultiValueMap<String, String> headers;
-
   public InterestStocksService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
   }
 
   public JsonNode inquireInterestStocks(String interestGroupCode) {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
-
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(interestGroupCode);
     Response response = get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output2 : null;

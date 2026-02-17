@@ -20,21 +20,16 @@ public class InterestStockGroupsService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-grouplist";
   private static final String TR_ID = "HHKCM113004C7";
 
-  private MultiValueMap<String, String> headers;
-
   public InterestStockGroupsService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
   }
 
   public List<InterestStockGroup> inquireInterestStockGroups() {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
-
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams();
     Response response = get(PATH, headers, queryParams, Response.class).block();
-    return response != null ? response.output : null;
+    return response != null ? response.output : List.of();
   }
 
   private MultiValueMap<String, String> buildRequestParams() {

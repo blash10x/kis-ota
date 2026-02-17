@@ -22,18 +22,13 @@ public class BalanceService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/inquire-balance";
   private static final String TR_ID = "TTTC8434R";
 
-  private MultiValueMap<String, String> headers;
-
   public BalanceService(
       OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
     super(otaProperties, kisProperties, kisAuthService);
   }
 
   public List<Balance> inquireBalances() {
-    if (headers == null) {
-      headers = buildRequestHeaders(TR_ID);
-    }
-
+    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams();
     Response response = get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : List.of();
