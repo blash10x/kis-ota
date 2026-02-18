@@ -2,8 +2,10 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.OtaProperties;
+import blash10x.kis.ota.model.InterestStock;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,13 +20,18 @@ public class InterestStocksService extends TradingService {
   private static final Logger LOGGER = LoggerFactory.getLogger(InterestStocksService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-stocklist-by-group";
   private static final String TR_ID = "HHKCM113004C6";
+  private final ExtractionService extractionService;
 
   public InterestStocksService(
-      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
+      OtaProperties otaProperties,
+      KisProperties kisProperties,
+      KisAuthService kisAuthService,
+      ExtractionService extractionService) {
     super(otaProperties, kisProperties, kisAuthService);
+    this.extractionService = extractionService;
   }
 
-  public JsonNode inquireInterestStocks(String interestGroupCode) {
+  public List<InterestStock> inquireInterestStocks(String interestGroupCode) {
     MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(interestGroupCode);
     Response response = get(PATH, headers, queryParams, Response.class).block();
@@ -54,5 +61,5 @@ public class InterestStocksService extends TradingService {
       @JsonProperty("output1")
       JsonNode output,
       @JsonProperty("output2")
-      JsonNode output2) {}
+      List<InterestStock> output2) {}
 }

@@ -57,6 +57,17 @@ public class JsonNodes {
     }
   }
 
+  public static <T> T toValue(String content, TypeReference<T> valueTypeRef) {
+    if (content == null) {
+      return null;
+    }
+    try {
+      return objectMapper.readValue(content, valueTypeRef);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public static <T> T toValue(TreeNode source, Class<T> valueType) {
     if (source == null) {
       return null;
@@ -68,12 +79,12 @@ public class JsonNodes {
     }
   }
 
-  public static <T> T toValue(TreeNode source, TypeReference<T> toValueTypeRef) {
+  public static <T> T toValue(TreeNode source, TypeReference<T> valueTypeRef) {
     if (source == null) {
       return null;
     }
     try {
-      return objectMapper.treeToValue(source, toValueTypeRef);
+      return objectMapper.treeToValue(source, valueTypeRef);
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }

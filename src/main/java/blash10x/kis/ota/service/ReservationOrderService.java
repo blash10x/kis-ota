@@ -40,7 +40,7 @@ public class ReservationOrderService extends TradingService {
       KisProperties kisProperties,
       KisAuthService kisAuthService,
       BalanceService balanceService,
-      RealtimePriceService  realtimePriceService) {
+      RealtimePriceService realtimePriceService) {
     super(otaProperties, kisProperties, kisAuthService);
     this.otaProperties = otaProperties;
     this.balanceService = balanceService;
