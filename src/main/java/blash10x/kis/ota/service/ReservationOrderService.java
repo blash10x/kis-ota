@@ -2,6 +2,7 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.config.OtaProperties;
+import blash10x.kis.ota.controller.dto.CreateReservationOrderRequest;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.MarketName;
@@ -48,18 +49,26 @@ public class ReservationOrderService extends TradingService {
   }
 
   public List<ReservationOrderSeq> orderReservation(
-      OrderCode orderCode, List<String> productNos, boolean real) {
+      CreateReservationOrderRequest request) {
+    OrderCode orderCode = request.orderCode();
+    List<String> productNos = request.productNos();
+    Map<OrderCode, Integer> maxRepetitions = request.maxRepetitions();
+    Map<MarketName, Double> baseRates = request.baseRates();
+    Map<MarketName, Double> stepRates = request.stepRates();
+    Map<OrderCode, Double> multipleRates = request.multipleRates();
+    boolean real = request.real();
+
     Map<String, Balance> balances = balanceService.getBalances();
     Map<String, Product> products = otaProperties.getProducts();
 
-    List<String> orderProductNos = orderCode == OrderCode.SELL
+    List<String> orderProductNos = OrderCode.SELL == orderCode
         ? productNos.stream().filter(balances::containsKey).toList()
         : productNos.stream().filter(products::containsKey).toList();
     LOGGER.info("orderProductNos={}", orderProductNos);
 
-    if (orderProductNos.isEmpty() && orderCode == OrderCode.SELL) {
+    if (orderProductNos.isEmpty() && OrderCode.SELL == orderCode) {
       orderProductNos = balances.keySet().stream().toList();
-    } else if (orderProductNos.isEmpty() && orderCode == OrderCode.BUY) {
+    } else if (orderProductNos.isEmpty() && OrderCode.BUY == orderCode) {
       orderProductNos = products.keySet().stream().toList();
     }
 
@@ -71,13 +80,15 @@ public class ReservationOrderService extends TradingService {
           Product product = products.get(productNo);
           Balance balance = balances.get(productNo);
           double beta = Math.max(product.beta(), 0.90);
-          int size = getOrderSize(balance, orderCode);
+          int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
-            double rate = calculateRate(i, product, productPrice, orderCode);
+            double rate =
+                calculateRate(
+                    i, product, productPrice, orderCode, baseRates, stepRates, multipleRates);
             if (rate > 29.8) {
               break;
             }
-            if (rate < 5.0 * beta
+            if (OrderCode.SELL == orderCode && rate < 5.0 * beta
                 && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
               continue;
             }
@@ -115,6 +126,7 @@ public class ReservationOrderService extends TradingService {
     MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     Request request = buildRequest(productNo, "" + orderUnitPrice, orderCode);
     Response response = post(PATH, headers, null, request, Response.class).block();
+    sleep(100); // 20 transactions per second per account
     return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }
 

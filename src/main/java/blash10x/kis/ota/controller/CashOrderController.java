@@ -3,6 +3,7 @@ package blash10x.kis.ota.controller;
 import blash10x.kis.ota.controller.dto.CreateReservationOrderRequest;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import blash10x.kis.ota.service.CashOrderService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * @author myungsik.sung@gmail.com
  */
+@Hidden
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
 @RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -27,6 +29,6 @@ public class CashOrderController {
   @PostMapping(value = "/order-cash")
   public List<ReservationOrderSeq> orderReservation(
       @RequestBody CreateReservationOrderRequest request) {
-    return service.orderCash(request.productNos(), request.orderCode(), request.real());
+    return service.orderCash(request);
   }
 }

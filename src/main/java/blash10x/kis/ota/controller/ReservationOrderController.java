@@ -30,6 +30,6 @@ public class ReservationOrderController {
   @PostMapping(value = "/order-resv")
   public List<ReservationOrderSeq> orderReservation(
       @RequestBody @Valid CreateReservationOrderRequest request) {
-    return service.orderReservation(request.orderCode(), request.productNos(), request.real());
+    return service.orderReservation(request);
   }
 }

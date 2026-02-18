@@ -11,6 +11,7 @@ import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.Product;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
 import java.util.Map;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /**
  * @author myungsik.sung@gmail.com
@@ -60,7 +62,7 @@ abstract class TradingService {
       Class<T> responseType) {
     return externalService
         .get(path, headers, queryParams, JsonNode.class)
-        .retry(2)
+        .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
         .mapNotNull(
             responseEntity -> {
               JsonNode jsonNode = responseEntity.getBody();
@@ -77,7 +79,7 @@ abstract class TradingService {
       Class<T> responseType) {
     return externalService
         .post(path, headers, queryParams, requestBody, JsonNode.class)
-        .retry(2)
+        .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
         .mapNotNull(
             responseEntity -> {
               JsonNode jsonNode = responseEntity.getBody();
@@ -102,9 +104,8 @@ abstract class TradingService {
     return headers;
   }
 
-  int getOrderSize(Balance balance, OrderCode orderCode) {
-    Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
-    if (orderCode == OrderCode.BUY) {
+  int getOrderSize(Balance balance, OrderCode orderCode, Map<OrderCode, Integer> maxRepetitions) {
+    if (OrderCode.BUY == orderCode) {
       return maxRepetitions.get(orderCode);
     }
     if (balance == null) {
@@ -114,12 +115,19 @@ abstract class TradingService {
     return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
   }
 
-  double calculateRate(int i, Product product, ProductPrice productPrice, OrderCode orderCode) {
+  double calculateRate(
+      int i,
+      Product product,
+      ProductPrice productPrice,
+      OrderCode orderCode,
+      Map<MarketName, Double> baseRates,
+      Map<MarketName, Double> stepRates,
+      Map<OrderCode, Double> multipleRates) {
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
-    double multipleRate = otaProperties.getMultipleRates().get(orderCode);
-    double baseRate = otaProperties.getBaseRates().get(marketName);
-    double stepRate = otaProperties.getStepRates().get(marketName);
-    double beta = Math.max(product.beta(), 0.95);
+    double beta = Math.max(product.beta(), 0.85);
+    double baseRate = baseRates.get(marketName);
+    double stepRate = stepRates.get(marketName);
+    double multipleRate = multipleRates.get(orderCode);
 
     return baseRate + beta * stepRate * multipleRate * i;
   }
@@ -142,5 +150,13 @@ abstract class TradingService {
       tick = 1000;
     }
     return (int) (OrderCode.SELL == code ? Math.ceil(price / tick) : Math.floor(price / tick)) * tick;
+  }
+
+  void sleep(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      LOGGER.warn("Interrupted while waiting for sleep", e);
+    }
   }
 }
