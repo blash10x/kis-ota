@@ -1,7 +1,6 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.NormalProcessingResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -19,9 +18,8 @@ public class ReservationOrderCancelService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-rvsecncl";
   private static final String TR_ID = "CTSC0009U";
 
-  public ReservationOrderCancelService(
-      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(otaProperties, kisProperties, kisAuthService);
+  public ReservationOrderCancelService(KisProperties kisProperties, KisAuthService kisAuthService) {
+    super(kisProperties, kisAuthService);
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {

@@ -1,14 +1,12 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
-import blash10x.kis.ota.model.Product;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
@@ -30,7 +28,6 @@ import reactor.util.retry.Retry;
 @Data
 abstract class TradingService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TradingService.class);
-  private final OtaProperties otaProperties;
   private final KisProperties kisProperties;
   private final KisAuthService kisAuthService;
   private final String appKey;
@@ -40,9 +37,7 @@ abstract class TradingService {
   private final ExternalService externalService;
   private AccessToken accessToken;
 
-  public TradingService(
-      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
-    this.otaProperties = otaProperties;
+  public TradingService(KisProperties kisProperties, KisAuthService kisAuthService) {
     this.kisProperties = kisProperties;
     this.kisAuthService = kisAuthService;
 
@@ -117,19 +112,18 @@ abstract class TradingService {
 
   double calculateRate(
       int i,
-      Product product,
+      double beta,
       ProductPrice productPrice,
       OrderCode orderCode,
       Map<MarketName, Double> baseRates,
       Map<MarketName, Double> stepRates,
       Map<OrderCode, Double> multipleRates) {
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
-    double beta = Math.max(product.beta(), 0.85);
     double baseRate = baseRates.get(marketName);
     double stepRate = stepRates.get(marketName);
     double multipleRate = multipleRates.get(orderCode);
 
-    return baseRate + beta * stepRate * multipleRate * i;
+    return baseRate + i * beta * stepRate * multipleRate;
   }
 
   int calculateTickPrice(double price, MarketName marketName, OrderCode code) {

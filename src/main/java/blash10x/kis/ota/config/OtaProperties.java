@@ -1,7 +1,6 @@
 package blash10x.kis.ota.config;
 
 import blash10x.kis.ota.model.MarketName;
-import blash10x.kis.ota.model.Product;
 import java.util.Map;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,5 +14,4 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class OtaProperties {
   private Map<MarketName, String> extractionUrls;
-  private Map<String, Product> products;
 }

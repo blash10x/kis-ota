@@ -1,11 +1,12 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.InterestStock;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,15 +21,11 @@ public class InterestStocksService extends TradingService {
   private static final Logger LOGGER = LoggerFactory.getLogger(InterestStocksService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-stocklist-by-group";
   private static final String TR_ID = "HHKCM113004C6";
-  private final ExtractionService extractionService;
 
   public InterestStocksService(
-      OtaProperties otaProperties,
       KisProperties kisProperties,
-      KisAuthService kisAuthService,
-      ExtractionService extractionService) {
-    super(otaProperties, kisProperties, kisAuthService);
-    this.extractionService = extractionService;
+      KisAuthService kisAuthService) {
+    super(kisProperties, kisAuthService);
   }
 
   public List<InterestStock> inquireInterestStocks(String interestGroupCode) {
@@ -36,6 +33,11 @@ public class InterestStocksService extends TradingService {
     MultiValueMap<String, String> queryParams = buildRequestParams(interestGroupCode);
     Response response = get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output2 : null;
+  }
+
+  public Map<String, InterestStock> getInterestStocks(String interestGroupCode) {
+    List<InterestStock> balances = inquireInterestStocks(interestGroupCode);
+    return balances.stream().collect(Collectors.toMap(InterestStock::stockCode, v -> v));
   }
 
   private MultiValueMap<String, String> buildRequestParams(String interestGroupCode) {

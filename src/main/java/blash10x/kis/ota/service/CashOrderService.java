@@ -1,13 +1,12 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.controller.dto.CreateReservationOrderRequest;
 import blash10x.kis.ota.model.Balance;
+import blash10x.kis.ota.model.InterestStock;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
-import blash10x.kis.ota.model.Product;
 import blash10x.kis.ota.model.ProductPrice;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -33,20 +32,23 @@ public class CashOrderService extends TradingService {
   private static final String ORD_QTY = "1"; // 주문수량
   private static final String EXCG_ID_DVSN_CD = "SOR"; // 거래소ID구분코드: SOR: Smart Order Routing
 
-  private final OtaProperties otaProperties;
   private final BalanceService balanceService;
   private final RealtimePriceService realtimePriceService;
+  private final InterestStocksService interestStocksService;
+  private final ExtractionService extractionService;
 
   public CashOrderService(
-      OtaProperties otaProperties,
       KisProperties kisProperties,
       KisAuthService kisAuthService,
       BalanceService balanceService,
-      RealtimePriceService  realtimePriceService) {
-    super(otaProperties, kisProperties, kisAuthService);
-    this.otaProperties = otaProperties;
+      RealtimePriceService realtimePriceService,
+      InterestStocksService interestStocksService,
+      ExtractionService extractionService) {
+    super(kisProperties, kisAuthService);
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
+    this.interestStocksService = interestStocksService;
+    this.extractionService = extractionService;
   }
 
   // TODO: TBD
@@ -61,26 +63,28 @@ public class CashOrderService extends TradingService {
     boolean real = request.real();
 
     Map<String, Balance> balances = balanceService.getBalances();
-    Map<String, Product> products = otaProperties.getProducts();
+    Map<String, InterestStock> interestStocks = interestStocksService.getInterestStocks("001");
 
     List<String> orderProductNos = OrderCode.SELL == orderCode
         ? productNos.stream().filter(balances::containsKey).toList()
-        : productNos.stream().filter(products::containsKey).toList();
+        : productNos.stream().filter(interestStocks::containsKey).toList();
     LOGGER.info("orderProductNos={}", orderProductNos);
 
     List<ReservationOrderSeq> results = new ArrayList<>();
     orderProductNos.forEach(
         productNo -> {
           ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
+          double _beta = extractionService.extractYearBeta(productNo);
+
           MarketName marketName = MarketName.valueOf(productPrice.marketName());
-          Product product = products.get(productNo);
+          InterestStock interestStock = interestStocks.get(productNo);
           Balance balance = balances.get(productNo);
-          double beta = Math.max(product.beta(), 0.90);
+          double beta = Math.max(_beta, 0.90);
           int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
             double rate =
                 calculateRate(
-                    i, product, productPrice, orderCode, baseRates, stepRates, multipleRates);
+                    i, beta, productPrice, orderCode, baseRates, stepRates, multipleRates);
             if (rate > 29.8) {
               break;
             }
@@ -98,10 +102,10 @@ public class CashOrderService extends TradingService {
                 "{} | {} | {} ({}) | {} ({}) | {} | {} | {}",
                 String.format("%2d", i),
                 productNo,
-                product.productName(),
+                interestStock.htsKoreanName(),
                 marketName,
                 orderCode,
-                product.beta(),
+                beta,
                 String.format("%,6d", realtimePrice),
                 String.format("%2.2f", direction * rate),
                 String.format("%,6d", tickPrice));

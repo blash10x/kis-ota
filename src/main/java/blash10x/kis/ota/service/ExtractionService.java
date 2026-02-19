@@ -40,7 +40,6 @@ public class ExtractionService {
     ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, stockCode);
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
     String url = otaProperties.getExtractionUrls().get(marketName) + productPrice.shortCode();
-    System.out.println("----------- url: " + url);
     try {
       Document doc = Jsoup.connect(url).get();
       return marketName == MarketName.KOSPI200 ? extractFromKOSPI200(doc) : extractFromETF(doc);

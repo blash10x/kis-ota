@@ -1,7 +1,6 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -22,9 +21,8 @@ public class BalanceService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/trading/inquire-balance";
   private static final String TR_ID = "TTTC8434R";
 
-  public BalanceService(
-      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(otaProperties, kisProperties, kisAuthService);
+  public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
+    super(kisProperties, kisAuthService);
   }
 
   public List<Balance> inquireBalances() {

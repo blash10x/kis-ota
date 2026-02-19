@@ -1,7 +1,6 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
-import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.model.InterestStockGroup;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -20,9 +19,8 @@ public class InterestStockGroupsService extends TradingService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-grouplist";
   private static final String TR_ID = "HHKCM113004C7";
 
-  public InterestStockGroupsService(
-      OtaProperties otaProperties, KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(otaProperties, kisProperties, kisAuthService);
+  public InterestStockGroupsService(KisProperties kisProperties, KisAuthService kisAuthService) {
+    super(kisProperties, kisAuthService);
   }
 
   public List<InterestStockGroup> inquireInterestStockGroups() {
