@@ -31,7 +31,7 @@ public record CreateReservationOrderRequest(
       """
       {
         "KOSPI200": 1.8,
-        "ETF": 1.5
+        "ETF": 1.45
       }
       """;
 
@@ -47,7 +47,7 @@ public record CreateReservationOrderRequest(
       """
       {
         "SELL": 1.0,
-        "BUY": 0.75
+        "BUY": 0.6
       }
       """;
 }

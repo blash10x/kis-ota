@@ -83,7 +83,7 @@ public class ReservationOrderService extends TradingService {
           MarketName marketName = MarketName.valueOf(productPrice.marketName());
           InterestStock interestStock = interestStocks.get(productNo);
           Balance balance = balances.get(productNo);
-          double beta = Math.max(_beta, 0.90);
+          double beta = Math.log(_beta + 0.4) + 1;
           int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
             double rate =
@@ -92,7 +92,8 @@ public class ReservationOrderService extends TradingService {
             if (rate > 29.8) {
               break;
             }
-            if (OrderCode.SELL == orderCode && rate < 5.0 * beta
+            if (OrderCode.SELL == orderCode
+                && rate < 5.0 * beta
                 && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
               continue;
             }
@@ -103,18 +104,18 @@ public class ReservationOrderService extends TradingService {
             int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
 
             LOGGER.info(
-                "{} | {} | {} ({}) | {} ({}) | {} | {} | {}",
+                "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {}",
                 String.format("%2d", i),
                 productNo,
                 interestStock != null ? interestStock.htsKoreanName() : balance.productName(),
                 marketName,
                 orderCode,
-                beta,
+                _beta,
+                String.format("%2.2f", beta),
                 String.format("%,6d", realtimePrice),
                 String.format("%2.2f", direction * rate),
                 String.format("%,6d", tickPrice));
-            ReservationOrderSeq result =
-                orderReservation(productNo, tickPrice, orderCode, real);
+            ReservationOrderSeq result = orderReservation(productNo, tickPrice, orderCode, real);
             results.add(result);
           }
         });

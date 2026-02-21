@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <property name="CONSOLE_LOG_PATTERN"
+    value="${CUSTOM_CONSOLE_LOG_PATTERN:-%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-5level) %clr([%15.15thread]){faint} %clr(%-40.40logger{39}:%3.3L){cyan} %clr(:){faint} %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%ex}}"/>
+
+  <!-- appender -->
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+  <root level="WARN">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+  <logger name="blash10x" level="INFO"/>
+  <logger name="org.springframework" level="INFO"/>
+</configuration>
