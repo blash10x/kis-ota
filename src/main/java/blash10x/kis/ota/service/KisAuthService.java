@@ -94,7 +94,6 @@ public class KisAuthService {
         .build();
     return externalService
         .post(PATH, null, null, request, AccessToken.class)
-        .retry(2)
         .mapNotNull(HttpEntity::getBody)
         .block();
   }

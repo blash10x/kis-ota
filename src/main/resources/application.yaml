@@ -22,3 +22,4 @@ management:
 logging:
   level:
     blash10x.kis: TRACE
+#    reactor.netty.http.client: DEBUG

@@ -34,7 +34,7 @@ import reactor.netty.transport.logging.AdvancedByteBufFormat;
  */
 public final class ExternalService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExternalService.class);
-  private final Duration timeout = Duration.ofMillis(500);
+  private final Duration timeout = Duration.ofMillis(2000);
   private final WebClient webClient;
 
   public ExternalService(String baseUrl) {
