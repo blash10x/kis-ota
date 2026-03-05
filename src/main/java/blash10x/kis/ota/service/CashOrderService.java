@@ -57,7 +57,7 @@ public class CashOrderService extends TradingService {
     OrderCode orderCode = request.orderCode();
     List<String> productNos = request.productNos();
     Map<OrderCode, Integer> maxRepetitions = request.maxRepetitions();
-    Map<MarketName, Double> baseRates = request.baseRates();
+    Map<MarketName, Double> baseRates = request.baseRates().get(orderCode);
     Map<MarketName, Double> stepRates = request.stepRates();
     Map<OrderCode, Double> multipleRates = request.multipleRates();
     boolean real = request.real();
@@ -70,16 +70,24 @@ public class CashOrderService extends TradingService {
         : productNos.stream().filter(interestStocks::containsKey).toList();
     LOGGER.info("orderProductNos={}", orderProductNos);
 
+    if (orderProductNos.isEmpty() && OrderCode.SELL == orderCode) {
+      orderProductNos = balances.keySet().stream().toList();
+    } else if (orderProductNos.isEmpty() && OrderCode.BUY == orderCode) {
+      orderProductNos = interestStocks.keySet().stream().toList();
+    }
+
     List<ReservationOrderSeq> results = new ArrayList<>();
     orderProductNos.forEach(
         productNo -> {
           ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
+          int realtimePrice = Integer.parseInt(productPrice.presentPrice());
           double _beta = extractionService.extractYearBeta(productNo);
 
           MarketName marketName = MarketName.valueOf(productPrice.marketName());
           InterestStock interestStock = interestStocks.get(productNo);
           Balance balance = balances.get(productNo);
-          double beta = Math.max(_beta, 0.90);
+          double purchaseAvgPrice = balance != null ? Double.parseDouble(balance.purchaseAvgPrice()) : 0.0;
+          double beta = Math.log(_beta + 0.45) + 1;
           int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
             double rate =
@@ -88,26 +96,32 @@ public class CashOrderService extends TradingService {
             if (rate > 29.8) {
               break;
             }
-            if (OrderCode.SELL == orderCode && rate < 5.0 * beta
+            if (OrderCode.SELL == orderCode
+                && rate < 5.0 * beta
                 && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
               continue;
             }
 
-            int realtimePrice = Integer.parseInt(productPrice.presentPrice());
             int direction = OrderCode.SELL == orderCode ? 1 : -1;
             double orderUnitPrice = realtimePrice * (100 + direction * rate) / 100;
             int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
 
+            if (OrderCode.SELL == orderCode && tickPrice < purchaseAvgPrice * 1.05) {
+              continue;
+            }
+
             LOGGER.info(
-                "{} | {} | {} ({}) | {} ({}) | {} | {} | {}",
+                "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
                 String.format("%2d", i),
                 productNo,
-                interestStock.htsKoreanName(),
+                interestStock != null ? interestStock.htsKoreanName() : balance.productName(),
                 marketName,
                 orderCode,
-                beta,
+                _beta,
+                String.format("%4.2f", beta),
+                String.format("%,6.2f", purchaseAvgPrice),
                 String.format("%,6d", realtimePrice),
-                String.format("%2.2f", direction * rate),
+                String.format("%6.2f", direction * rate),
                 String.format("%,6d", tickPrice));
             ReservationOrderSeq result = orderCash(balance.productNo(), tickPrice, orderCode, real);
             results.add(result);
@@ -126,6 +140,7 @@ public class CashOrderService extends TradingService {
     MultiValueMap<String, String> headers = buildRequestHeaders(trId);
     Request request = buildRequest(productNo, "" + orderUnitPrice);
     Response response = post(PATH, headers, null, request, Response.class).block();
+    sleep(100); // 20 transactions per second per account
     return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }
 

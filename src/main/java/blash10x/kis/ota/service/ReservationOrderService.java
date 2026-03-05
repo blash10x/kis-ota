@@ -55,7 +55,7 @@ public class ReservationOrderService extends TradingService {
     OrderCode orderCode = request.orderCode();
     List<String> productNos = request.productNos();
     Map<OrderCode, Integer> maxRepetitions = request.maxRepetitions();
-    Map<MarketName, Double> baseRates = request.baseRates();
+    Map<MarketName, Double> baseRates = request.baseRates().get(orderCode);
     Map<MarketName, Double> stepRates = request.stepRates();
     Map<OrderCode, Double> multipleRates = request.multipleRates();
     boolean real = request.real();
@@ -78,12 +78,14 @@ public class ReservationOrderService extends TradingService {
     orderProductNos.forEach(
         productNo -> {
           ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
+          int realtimePrice = Integer.parseInt(productPrice.presentPrice());
           double _beta = extractionService.extractYearBeta(productNo);
 
           MarketName marketName = MarketName.valueOf(productPrice.marketName());
           InterestStock interestStock = interestStocks.get(productNo);
           Balance balance = balances.get(productNo);
-          double beta = Math.log(_beta + 0.4) + 1;
+          double purchaseAvgPrice = balance != null ? Double.parseDouble(balance.purchaseAvgPrice()) : 0.0;
+          double beta = Math.log(_beta + 0.45) + 1;
           int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
             double rate =
@@ -98,22 +100,26 @@ public class ReservationOrderService extends TradingService {
               continue;
             }
 
-            int realtimePrice = Integer.parseInt(productPrice.presentPrice());
             int direction = OrderCode.SELL == orderCode ? 1 : -1;
             double orderUnitPrice = realtimePrice * (100 + direction * rate) / 100;
             int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
 
+            if (OrderCode.SELL == orderCode && tickPrice < purchaseAvgPrice * 1.0075) {
+              continue;
+            }
+
             LOGGER.info(
-                "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {}",
+                "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
                 String.format("%2d", i),
                 productNo,
                 interestStock != null ? interestStock.htsKoreanName() : balance.productName(),
                 marketName,
                 orderCode,
                 _beta,
-                String.format("%2.2f", beta),
+                String.format("%4.2f", beta),
+                String.format("%,6.2f", purchaseAvgPrice),
                 String.format("%,6d", realtimePrice),
-                String.format("%2.2f", direction * rate),
+                String.format("%6.2f", direction * rate),
                 String.format("%,6d", tickPrice));
             ReservationOrderSeq result = orderReservation(productNo, tickPrice, orderCode, real);
             results.add(result);

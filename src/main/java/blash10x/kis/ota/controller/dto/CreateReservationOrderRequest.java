@@ -14,7 +14,7 @@ public record CreateReservationOrderRequest(
     @NotNull OrderCode orderCode,
     List<String> productNos,
     @Schema(example = MAX_REPETITIONS) Map<OrderCode, Integer> maxRepetitions,
-    @Schema(example = BASE_RATES) Map<MarketName, Double> baseRates,
+    @Schema(example = BASE_RATES) Map<OrderCode, Map<MarketName, Double>> baseRates,
     @Schema(example = STEP_RATES) Map<MarketName, Double> stepRates,
     @Schema(example = MULTIPLE_RATES) Map<OrderCode, Double> multipleRates,
     @Schema(defaultValue = "false") @NotNull Boolean real) {
@@ -30,8 +30,14 @@ public record CreateReservationOrderRequest(
   static final String BASE_RATES =
       """
       {
-        "KOSPI200": 1.8,
-        "ETF": 1.45
+        "SELL": {
+          "KOSPI200": 1.8,
+          "ETF": 1.5
+        },
+        "BUY": {
+          "KOSPI200": 2.6,
+          "ETF": 1.85
+        }
       }
       """;
 
@@ -47,7 +53,7 @@ public record CreateReservationOrderRequest(
       """
       {
         "SELL": 1.0,
-        "BUY": 0.6
+        "BUY": 0.85
       }
       """;
 }
