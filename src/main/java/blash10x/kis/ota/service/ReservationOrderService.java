@@ -79,21 +79,27 @@ public class ReservationOrderService extends TradingService {
         productNo -> {
           ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
           int realtimePrice = Integer.parseInt(productPrice.presentPrice());
+          double dayOverDayRate = Double.parseDouble(productPrice.dayOverDayRate());
           double _beta = extractionService.extractYearBeta(productNo);
 
           MarketName marketName = MarketName.valueOf(productPrice.marketName());
           InterestStock interestStock = interestStocks.get(productNo);
           Balance balance = balances.get(productNo);
           double purchaseAvgPrice = balance != null ? Double.parseDouble(balance.purchaseAvgPrice()) : 0.0;
-          double beta = Math.log(_beta + 0.45) + 1;
+          double beta = Math.log(_beta + 0.75) + 1;
           int size = getOrderSize(balance, orderCode, maxRepetitions);
           for (int i = 1; i <= size; i++) {
             double rate =
                 calculateRate(
                     i, beta, productPrice, orderCode, baseRates, stepRates, multipleRates);
-            if (rate > 29.8) {
+            if (OrderCode.SELL == orderCode && dayOverDayRate < 0.0) {
+              rate += Math.abs(dayOverDayRate) / 2;
+            }
+
+            if (rate > 29.85) {
               break;
             }
+
             if (OrderCode.SELL == orderCode
                 && rate < 5.0 * beta
                 && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
@@ -102,11 +108,12 @@ public class ReservationOrderService extends TradingService {
 
             int direction = OrderCode.SELL == orderCode ? 1 : -1;
             double orderUnitPrice = realtimePrice * (100 + direction * rate) / 100;
-            int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
-
-            if (OrderCode.SELL == orderCode && tickPrice < purchaseAvgPrice * 1.0075) {
-              continue;
+            double gain = orderUnitPrice - purchaseAvgPrice * 1.01;
+            if (OrderCode.SELL == orderCode && gain < 0) {
+              orderUnitPrice -= gain;
             }
+
+            int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
 
             LOGGER.info(
                 "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
