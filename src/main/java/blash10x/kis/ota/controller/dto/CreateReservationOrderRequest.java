@@ -15,15 +15,15 @@ public record CreateReservationOrderRequest(
     List<String> productNos,
     @Schema(example = MAX_REPETITIONS) Map<OrderCode, Integer> maxRepetitions,
     @Schema(example = BASE_RATES) Map<OrderCode, Map<MarketName, Double>> baseRates,
-    @Schema(example = STEP_RATES) Map<MarketName, Double> stepRates,
+    @Schema(example = STEP_RATES) Map<OrderCode, Map<MarketName, Double>> stepRates,
     @Schema(example = MULTIPLE_RATES) Map<OrderCode, Double> multipleRates,
     @Schema(defaultValue = "false") @NotNull Boolean real) {
 
   static final String MAX_REPETITIONS =
       """
       {
-        "SELL": 20,
-        "BUY": 12
+        "SELL": 35,
+        "BUY": 20
       }
       """;
 
@@ -31,12 +31,12 @@ public record CreateReservationOrderRequest(
       """
       {
         "SELL": {
-          "KOSPI200": 1.8,
-          "ETF": 1.5
+          "KOSPI200": 2.10,
+          "ETF": 1.55
         },
         "BUY": {
-          "KOSPI200": 2.6,
-          "ETF": 1.85
+          "KOSPI200": 2.20,
+          "ETF": 1.60
         }
       }
       """;
@@ -44,8 +44,14 @@ public record CreateReservationOrderRequest(
   static final String STEP_RATES =
       """
       {
-        "KOSPI200": 1.5,
-        "ETF": 0.6
+        "SELL": {
+          "KOSPI200": 1.15,
+          "ETF": 0.45
+        },
+        "BUY": {
+          "KOSPI200": 1.10,
+          "ETF": 0.40
+        }
       }
       """;
 
@@ -53,7 +59,7 @@ public record CreateReservationOrderRequest(
       """
       {
         "SELL": 1.0,
-        "BUY": 0.85
+        "BUY": 0.80
       }
       """;
 }

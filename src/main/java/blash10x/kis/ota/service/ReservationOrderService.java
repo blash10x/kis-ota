@@ -56,7 +56,7 @@ public class ReservationOrderService extends TradingService {
     List<String> productNos = request.productNos();
     Map<OrderCode, Integer> maxRepetitions = request.maxRepetitions();
     Map<MarketName, Double> baseRates = request.baseRates().get(orderCode);
-    Map<MarketName, Double> stepRates = request.stepRates();
+    Map<MarketName, Double> stepRates = request.stepRates().get(orderCode);
     Map<OrderCode, Double> multipleRates = request.multipleRates();
     boolean real = request.real();
 
@@ -93,7 +93,7 @@ public class ReservationOrderService extends TradingService {
                 calculateRate(
                     i, beta, productPrice, orderCode, baseRates, stepRates, multipleRates);
             if (OrderCode.SELL == orderCode && dayOverDayRate < 0.0) {
-              rate += Math.abs(dayOverDayRate) / 2;
+              rate += Math.abs(dayOverDayRate) * 0.30;
             }
 
             if (rate > 29.85) {
@@ -138,13 +138,14 @@ public class ReservationOrderService extends TradingService {
   private ReservationOrderSeq orderReservation(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
     if (!real) {
+      sleep(100); // 20 transactions per second per account
       return new ReservationOrderSeq("Mock");
     }
 
     MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
     Request request = buildRequest(productNo, "" + orderUnitPrice, orderCode);
     Response response = post(PATH, headers, null, request, Response.class).block();
-    sleep(100); // 20 transactions per second per account
+    sleep(150); // 20 transactions per second per account
     return response != null ? response.output : new ReservationOrderSeq("Unknown");
   }
 
