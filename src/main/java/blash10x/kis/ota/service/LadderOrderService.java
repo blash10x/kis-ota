@@ -9,6 +9,7 @@ import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.ProductPrice;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,6 +130,8 @@ abstract class LadderOrderService<T> extends TradingService {
     double purchaseAvgPrice = balance != null ? Double.parseDouble(balance.purchaseAvgPrice()) : 0.0;
     double beta = Math.log(_beta + 0.75) + 1;
     int size = getOrderSize(balance, orderCode, maxRepetitions);
+    int orderCount = 0; // i 는 rate 단계라 건너뛴 단이 있으면 비므로, 로그에는 실제 주문 순번을 찍는다
+    Set<Integer> orderedPrices = new HashSet<>();
     for (int i = 1; i <= size; i++) {
       double rate = calculateRate(i, beta, productPrice, baseRates, stepRates);
       if (OrderCode.SELL == orderCode && dayOverDayRate < 0.0) {
@@ -159,9 +162,15 @@ abstract class LadderOrderService<T> extends TradingService {
         break;
       }
 
+      // 손익분기 보정(gain)이나 호가단위 반올림 때문에 앞 단과 같은 가격이 나올 수 있다. 같은 가격은 한 번만 낸다.
+      if (!orderedPrices.add(tickPrice)) {
+        continue;
+      }
+
+      orderCount++;
       logger.info(
           "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
-          String.format("%2d", i),
+          String.format("%2d", orderCount),
           productNo,
           interestStock != null ? interestStock.htsKoreanName() : balance.productName(),
           marketName,
