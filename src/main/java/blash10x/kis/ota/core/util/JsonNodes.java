@@ -29,8 +29,12 @@ public class JsonNodes {
     return objectMapper.createObjectNode();
   }
 
+  public static ArrayNode createEmptyArrayNode() {
+    return objectMapper.createArrayNode();
+  }
+
   public static ArrayNode createArrayNode(List<String> values) {
-    ArrayNode arrayNode = objectMapper.createArrayNode();
+    ArrayNode arrayNode = createEmptyArrayNode();
     values.forEach(arrayNode::add);
     return arrayNode;
   }

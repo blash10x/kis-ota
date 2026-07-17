@@ -14,7 +14,9 @@ import java.util.Map;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -55,14 +57,25 @@ abstract class TradingService {
       MultiValueMap<String, String> headers,
       MultiValueMap<String, ?> queryParams,
       Class<T> responseType) {
+    return getEntity(path, headers, queryParams, responseType).mapNotNull(HttpEntity::getBody);
+  }
+
+  /** 응답 헤더가 필요한 경우 사용한다. (연속조회의 tr_cont 등) */
+  public <T> Mono<ResponseEntity<T>> getEntity(
+      String path,
+      MultiValueMap<String, String> headers,
+      MultiValueMap<String, ?> queryParams,
+      Class<T> responseType) {
     return externalService
         .get(path, headers, queryParams, JsonNode.class)
         .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
-        .mapNotNull(
+        .map(
             responseEntity -> {
               JsonNode jsonNode = responseEntity.getBody();
               LOGGER.debug("{}", jsonNode);
-              return JsonNodes.toValue(jsonNode, responseType);
+              return ResponseEntity.status(responseEntity.getStatusCode())
+                  .headers(responseEntity.getHeaders())
+                  .body(JsonNodes.toValue(jsonNode, responseType));
             });
   }
 
@@ -114,16 +127,13 @@ abstract class TradingService {
       int i,
       double beta,
       ProductPrice productPrice,
-      OrderCode orderCode,
       Map<MarketName, Double> baseRates,
-      Map<MarketName, Double> stepRates,
-      Map<OrderCode, Double> multipleRates) {
-    MarketName marketName = MarketName.valueOf(productPrice.marketName());
+      Map<MarketName, Double> stepRates) {
+    MarketName marketName = MarketName.valueOf(productPrice.marketName()).rateKey();
     double baseRate = baseRates.get(marketName);
     double stepRate = stepRates.get(marketName);
-    double multipleRate = multipleRates.get(orderCode);
 
-    return baseRate + i * beta * stepRate * multipleRate;
+    return baseRate + i * beta * stepRate;
   }
 
   int calculateTickPrice(double price, MarketName marketName, OrderCode code) {

@@ -1,3 +1,6 @@
+server:
+  port: 8088
+
 spring:
   application:
     name: ota
@@ -19,7 +22,7 @@ management:
   endpoints:
     web.exposure.include: health, info, env, metrics, caches, threaddump
 
-logging:
-  level:
-    blash10x.kis: TRACE
+#logging:
+#  level:
+#    blash10x.kis: TRACE
 #    reactor.netty.http.client: DEBUG

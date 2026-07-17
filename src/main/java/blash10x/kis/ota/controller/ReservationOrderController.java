@@ -1,6 +1,6 @@
 package blash10x.kis.ota.controller;
 
-import blash10x.kis.ota.controller.dto.CreateReservationOrderRequest;
+import blash10x.kis.ota.controller.dto.CreateOrderRequest;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import blash10x.kis.ota.service.ReservationOrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +29,7 @@ public class ReservationOrderController {
   @Operation(summary = "주식예약주문")
   @PostMapping(value = "/order-resv")
   public List<ReservationOrderSeq> orderReservation(
-      @RequestBody @Valid CreateReservationOrderRequest request) {
-    return service.orderReservation(request);
+      @RequestBody @Valid CreateOrderRequest request) {
+    return service.order(request);
   }
 }
