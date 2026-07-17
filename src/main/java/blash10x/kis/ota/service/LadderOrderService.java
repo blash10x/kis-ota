@@ -2,6 +2,9 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
+import blash10x.kis.ota.domain.LadderInput;
+import blash10x.kis.ota.domain.LadderOrder;
+import blash10x.kis.ota.domain.LadderPricer;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.InterestStock;
 import blash10x.kis.ota.model.MarketCode;
@@ -9,10 +12,10 @@ import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.ProductPrice;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,15 +33,10 @@ abstract class LadderOrderService<T> extends TradingService {
   /** 모의 주문 간격. 실제 전송이 없으므로 더 짧다. */
   protected static final long MOCK_ORDER_INTERVAL_MILLIS = 100;
 
-  /**
-   * rate 자체의 상한. 가격제한폭 적용 종목에서는 상/하한가 가드가 항상 먼저 걸리므로 발동하지 않는 백스톱이다.
-   *
-   * <p>KIS 문서상 정리매매종목·ELW·신주인수권은 가격제한폭이 적용되지 않는다(주식예약주문 유의사항). 그런 종목에서
-   * stck_mxpr/stck_llam 이 어떤 값으로 오는지는 확인하지 못했으므로, 상/하한가 가드를 신뢰할 수 없는 경우를 대비해 남겨 둔다.
-   */
-  private static final double RATE_CAP = 29.985;
-
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  /** 상태가 없는 순수 계산이라 주입 없이 직접 만든다. 정책을 갈아끼우게 되면 생성자로 올린다. */
+  private final LadderPricer ladderPricer = new LadderPricer();
+
   private final BalanceService balanceService;
   private final RealtimePriceService realtimePriceService;
   private final InterestStocksService interestStocksService;
@@ -127,46 +125,30 @@ abstract class LadderOrderService<T> extends TradingService {
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
     InterestStock interestStock = interestStocks.get(productNo);
     Balance balance = balances.get(productNo);
-    double purchaseAvgPrice = balance != null ? Double.parseDouble(balance.purchaseAvgPrice()) : 0.0;
-    double beta = Math.log(_beta + 0.75) + 1;
-    int size = getOrderSize(balance, orderCode, maxRepetitions);
-    int orderCount = 0; // i 는 rate 단계라 건너뛴 단이 있으면 비므로, 로그에는 실제 주문 순번을 찍는다
-    Set<Integer> orderedPrices = new HashSet<>();
-    for (int i = 1; i <= size; i++) {
-      double rate = calculateRate(i, beta, productPrice, baseRates, stepRates);
-      if (OrderCode.SELL == orderCode && dayOverDayRate < 0.0) {
-        rate += Math.abs(dayOverDayRate) * 0.20;
-      }
 
-      if (rate > RATE_CAP) {
-        break;
-      }
+    LadderInput input = LadderInput.builder()
+        .orderCode(orderCode)
+        .marketName(marketName)
+        .realtimePrice(realtimePrice)
+        .upperPriceLimit(upperPriceLimit)
+        .lowerPriceLimit(lowerPriceLimit)
+        .dayOverDayRate(dayOverDayRate)
+        .yearBeta(_beta)
+        .purchaseAvgPrice(parseOrZero(balance, Balance::purchaseAvgPrice))
+        // 매도에서만 읽는 값이다. 매수에서도 파싱하면 KIS 가 빈 값을 줬을 때 낼 이유가 없는 예외를 낸다.
+        .evaluationProfitLossRatio(OrderCode.SELL == orderCode
+            ? parseOrZero(balance, Balance::evaluationProfitLossRatio)
+            : 0.0)
+        .size(getOrderSize(balance, orderCode, maxRepetitions))
+        .baseRates(baseRates)
+        .stepRates(stepRates)
+        .build();
 
-      if (OrderCode.SELL == orderCode
-          && rate < 5.0 * beta
-          && Double.parseDouble(balance.evaluationProfitLossRatio()) + rate < 0.5) {
-        continue;
-      }
-
-      int direction = OrderCode.SELL == orderCode ? 1 : -1;
-      double orderUnitPrice = realtimePrice * (100 + direction * rate) / 100;
-      double gain = orderUnitPrice - purchaseAvgPrice * 1.01;
-      if (OrderCode.SELL == orderCode && gain < 0) {
-        orderUnitPrice -= gain;
-      }
-
-      int tickPrice = calculateTickPrice(orderUnitPrice, marketName, orderCode);
-
-      // 매도는 i 가 커질수록 주문가가 오르고 매수는 내리므로, 한쪽을 벗어나면 이후도 전부 벗어난다.
-      if (tickPrice > upperPriceLimit || tickPrice < lowerPriceLimit) {
-        break;
-      }
-
-      // 손익분기 보정(gain)이나 호가단위 반올림 때문에 앞 단과 같은 가격이 나올 수 있다. 같은 가격은 한 번만 낸다.
-      if (!orderedPrices.add(tickPrice)) {
-        continue;
-      }
-
+    // 건너뛴 단은 LadderPricer 가 이미 걸러냈으므로, 여기 남은 것은 전부 전송할 주문이다.
+    List<LadderOrder> orders = ladderPricer.price(input);
+    double betaWeight = input.betaWeight();
+    int orderCount = 0;
+    for (LadderOrder order : orders) {
       orderCount++;
       logger.info(
           "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
@@ -176,13 +158,30 @@ abstract class LadderOrderService<T> extends TradingService {
           marketName,
           orderCode,
           _beta,
-          String.format("%4.2f", beta),
-          String.format("%,6.2f", purchaseAvgPrice),
+          String.format("%4.2f", betaWeight),
+          String.format("%,6.2f", input.purchaseAvgPrice()),
           String.format("%,6d", realtimePrice),
-          String.format("%6.2f", direction * rate),
-          String.format("%,6d", tickPrice));
-      T result = submit(productNo, tickPrice, orderCode, real);
+          String.format("%6.2f", order.rate()),
+          String.format("%,6d", order.unitPrice()));
+      T result = submit(productNo, order.unitPrice(), orderCode, real);
       results.add(result);
     }
+  }
+
+  /** 보유하지 않은 종목은 balance 가 없다. 매수 후보라도 보유 중이면 balance 가 있다. */
+  private static double parseOrZero(Balance balance, Function<Balance, String> field) {
+    return balance != null ? Double.parseDouble(field.apply(balance)) : 0.0;
+  }
+
+  private static int getOrderSize(
+      Balance balance, OrderCode orderCode, Map<OrderCode, Integer> maxRepetitions) {
+    if (OrderCode.BUY == orderCode) {
+      return maxRepetitions.get(orderCode);
+    }
+    if (balance == null) {
+      return 0;
+    }
+    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
+    return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
   }
 }

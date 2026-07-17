@@ -4,13 +4,8 @@ import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
-import blash10x.kis.ota.model.Balance;
-import blash10x.kis.ota.model.MarketName;
-import blash10x.kis.ota.model.OrderCode;
-import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
-import java.util.Map;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,50 +105,6 @@ abstract class TradingService {
     headers.set("appsecret", appSecret);
     headers.set("tr_id", trId);
     return headers;
-  }
-
-  int getOrderSize(Balance balance, OrderCode orderCode, Map<OrderCode, Integer> maxRepetitions) {
-    if (OrderCode.BUY == orderCode) {
-      return maxRepetitions.get(orderCode);
-    }
-    if (balance == null) {
-      return 0;
-    }
-    int orderPossibleQuantity = Integer.parseInt(balance.orderPossibleQuantity());
-    return Math.min(orderPossibleQuantity, maxRepetitions.get(orderCode));
-  }
-
-  double calculateRate(
-      int i,
-      double beta,
-      ProductPrice productPrice,
-      Map<MarketName, Double> baseRates,
-      Map<MarketName, Double> stepRates) {
-    MarketName marketName = MarketName.valueOf(productPrice.marketName()).rateKey();
-    double baseRate = baseRates.get(marketName);
-    double stepRate = stepRates.get(marketName);
-
-    return baseRate + i * beta * stepRate;
-  }
-
-  int calculateTickPrice(double price, MarketName marketName, OrderCode code) {
-    int tick;
-    if (price < 2000) {
-      tick = 1;
-    } else if (price < 5000 || marketName == MarketName.ETF) {
-      tick = 5;
-    } else if (price < 20000) {
-      tick = 10;
-    } else if (price < 50000) {
-      tick = 50;
-    } else if (price < 200000) {
-      tick = 100;
-    } else if (price < 500000) {
-      tick = 500;
-    } else {
-      tick = 1000;
-    }
-    return (int) (OrderCode.SELL == code ? Math.ceil(price / tick) : Math.floor(price / tick)) * tick;
   }
 
   void sleep(long millis) {
