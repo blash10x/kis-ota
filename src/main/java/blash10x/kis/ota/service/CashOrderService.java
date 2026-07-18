@@ -75,6 +75,9 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
         .orderQuantity(ORD_QTY)
         .orderUnitPrice(orderUnitPrice)
         .exchangeIdDivisionCode(EXCG_ID_DVSN_CD)
+        // 공식 샘플은 선택 필드도 키를 항상 전송한다. 빈 값이면 기본 동작(일반매도, 조건가 없음)이다.
+        .sellType("")
+        .conditionPrice("")
         .build();
   }
 
@@ -93,7 +96,11 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
       @JsonProperty("ORD_UNPR") // 주문단가
       String orderUnitPrice,
       @JsonProperty("EXCG_ID_DVSN_CD") // 거래소ID구분코드: KRX:한국거래소, NXT:대체거래소, SOR:SOR
-      String exchangeIdDivisionCode) {}
+      String exchangeIdDivisionCode,
+      @JsonProperty("SLL_TYPE") // 매도유형: 01:일반매도, 02:임의매매, 05:대차매도. 빈 값이면 일반매도
+      String sellType,
+      @JsonProperty("CNDT_PRIC") // 조건가격: 스탑지정가 주문 전용. 미사용
+      String conditionPrice) {}
 
   private record Response(
       @JsonProperty("rt_cd") // 성공 실패 여부
