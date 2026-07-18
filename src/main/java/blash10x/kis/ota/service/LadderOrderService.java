@@ -2,9 +2,11 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
+import blash10x.kis.ota.domain.BetaWeight;
 import blash10x.kis.ota.domain.LadderInput;
 import blash10x.kis.ota.domain.LadderOrder;
 import blash10x.kis.ota.domain.LadderPricer;
+import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.Balance;
 import blash10x.kis.ota.model.InterestStock;
 import blash10x.kis.ota.model.MarketCode;
@@ -34,8 +36,9 @@ abstract class LadderOrderService<T> extends TradingService {
   protected static final long MOCK_ORDER_INTERVAL_MILLIS = 100;
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  /** 상태가 없는 순수 계산이라 주입 없이 직접 만든다. 정책을 갈아끼우게 되면 생성자로 올린다. */
-  private final LadderPricer ladderPricer = new LadderPricer();
+  // TODO: 가중치 알고리즘을 전역 설정으로 선택하게 되면 주입으로 올린다. 지금은 베타로 고정.
+  private final LadderWeight ladderWeight = new BetaWeight();
+  private final LadderPricer ladderPricer = new LadderPricer(ladderWeight);
 
   private final BalanceService balanceService;
   private final RealtimePriceService realtimePriceService;
@@ -146,7 +149,7 @@ abstract class LadderOrderService<T> extends TradingService {
 
     // 건너뛴 단은 LadderPricer 가 이미 걸러냈으므로, 여기 남은 것은 전부 전송할 주문이다.
     List<LadderOrder> orders = ladderPricer.price(input);
-    double betaWeight = input.betaWeight();
+    double weight = ladderWeight.of(input);
     int orderCount = 0;
     for (LadderOrder order : orders) {
       orderCount++;
@@ -158,7 +161,7 @@ abstract class LadderOrderService<T> extends TradingService {
           marketName,
           orderCode,
           _beta,
-          String.format("%4.2f", betaWeight),
+          String.format("%4.2f", weight),
           String.format("%,6.2f", input.purchaseAvgPrice()),
           String.format("%,6d", realtimePrice),
           String.format("%6.2f", order.rate()),

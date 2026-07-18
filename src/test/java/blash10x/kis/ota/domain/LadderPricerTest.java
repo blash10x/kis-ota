@@ -21,7 +21,7 @@ class LadderPricerTest {
   private static final Map<MarketName, Double> STEP_RATES =
       Map.of(MarketName.KOSPI200, 1.20, MarketName.ETF, 0.55);
 
-  private final LadderPricer ladderPricer = new LadderPricer();
+  private final LadderPricer ladderPricer = new LadderPricer(new BetaWeight());
 
   /** 449450 PLUS K방산. 평단보다 14.65% 아래에서 매도 사다리를 낸 실제 사례. */
   private static LadderInput.LadderInputBuilder deepUnderwaterEtf() {
@@ -36,6 +36,26 @@ class LadderPricerTest {
         .purchaseAvgPrice(63_547.59)
         .evaluationProfitLossRatio(-14.65)
         .size(20)
+        .baseRates(BASE_RATES)
+        .stepRates(STEP_RATES);
+  }
+
+  /**
+   * 평단보다 한참 위에서 오르는 KOSPI200 매도 사다리. 손익분기 보정·손실 회피 skip 이 끼어들지 않아 rate = baseRate + i*weight*stepRate
+   * 가 그대로 드러난다. 5단 주문가는 73,600 / 74,900 / 76,200 / 77,500 / 78,800.
+   */
+  private static LadderInput.LadderInputBuilder climbingKospi() {
+    return LadderInput.builder()
+        .orderCode(OrderCode.SELL)
+        .marketName(MarketName.KOSPI200)
+        .realtimePrice(70_000)
+        .upperPriceLimit(91_000)
+        .lowerPriceLimit(49_000)
+        .dayOverDayRate(0.0)
+        .yearBeta(1.0)
+        .purchaseAvgPrice(10_000)
+        .evaluationProfitLossRatio(600.0)
+        .size(5)
         .baseRates(BASE_RATES)
         .stepRates(STEP_RATES);
   }
@@ -75,26 +95,14 @@ class LadderPricerTest {
   @DisplayName("상한가 이하인 단만 나가고 넘는 단은 잘린다")
   void keepsOnlyRungsWithinUpperLimit() {
     // 매도 사다리는 단조 증가라, 상한가를 중간에 걸면 앞 단만 남고 뒤는 전부 잘린다.
-    LadderInput.LadderInputBuilder climbing = LadderInput.builder()
-        .orderCode(OrderCode.SELL)
-        .marketName(MarketName.KOSPI200)
-        .realtimePrice(70_000)
-        .lowerPriceLimit(49_000)
-        .dayOverDayRate(0.0)
-        .yearBeta(1.0)
-        .purchaseAvgPrice(10_000)
-        .evaluationProfitLossRatio(600.0)
-        .size(5)
-        .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
 
     // 상한가가 넉넉하면 5단 전부 나간다.
-    assertThat(ladderPricer.price(climbing.upperPriceLimit(91_000).build()))
+    assertThat(ladderPricer.price(climbingKospi().build()))
         .extracting(LadderOrder::unitPrice)
         .containsExactly(73_600, 74_900, 76_200, 77_500, 78_800);
 
     // 상한가를 3단(76,200)과 4단(77,500) 사이에 걸면 3건만 남는다.
-    assertThat(ladderPricer.price(climbing.upperPriceLimit(77_000).build()))
+    assertThat(ladderPricer.price(climbingKospi().upperPriceLimit(77_000).build()))
         .extracting(LadderOrder::unitPrice)
         .containsExactly(73_600, 74_900, 76_200);
   }
@@ -102,22 +110,8 @@ class LadderPricerTest {
   @Test
   @DisplayName("매도 사다리는 현재가 위로 오르고 매수 사다리는 아래로 내린다")
   void sellClimbsAndBuyDescends() {
-    // 평단을 현재가보다 한참 아래로 두어 손익분기 보정과 손실 회피 skip 이 끼어들지 않게 한다.
-    LadderInput.LadderInputBuilder kospi = LadderInput.builder()
-        .marketName(MarketName.KOSPI200)
-        .realtimePrice(70_000)
-        .upperPriceLimit(91_000)
-        .lowerPriceLimit(49_000)
-        .dayOverDayRate(0.0)
-        .yearBeta(1.0)
-        .purchaseAvgPrice(10_000)
-        .evaluationProfitLossRatio(600.0)
-        .size(5)
-        .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
-
-    List<LadderOrder> sells = ladderPricer.price(kospi.orderCode(OrderCode.SELL).build());
-    List<LadderOrder> buys = ladderPricer.price(kospi.orderCode(OrderCode.BUY).build());
+    List<LadderOrder> sells = ladderPricer.price(climbingKospi().orderCode(OrderCode.SELL).build());
+    List<LadderOrder> buys = ladderPricer.price(climbingKospi().orderCode(OrderCode.BUY).build());
 
     assertThat(sells).extracting(LadderOrder::unitPrice).isSorted().allSatisfy(
         price -> assertThat(price).isGreaterThan(70_000));
@@ -129,25 +123,24 @@ class LadderPricerTest {
   @Test
   @DisplayName("KOSPI 는 KOSPI200 요율을 쓴다")
   void kospiFallsBackToKospi200Rates() {
-    LadderInput.LadderInputBuilder common = LadderInput.builder()
-        .orderCode(OrderCode.SELL)
-        .realtimePrice(70_000)
-        .upperPriceLimit(91_000)
-        .lowerPriceLimit(49_000)
-        .dayOverDayRate(0.0)
-        .yearBeta(1.0)
-        .purchaseAvgPrice(10_000)
-        .evaluationProfitLossRatio(600.0)
-        .size(5)
-        .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
-
-    assertThat(ladderPricer.price(common.marketName(MarketName.KOSPI).build()))
+    assertThat(ladderPricer.price(climbingKospi().marketName(MarketName.KOSPI).build()))
         .extracting(LadderOrder::rate)
         .isEqualTo(
-            ladderPricer.price(common.marketName(MarketName.KOSPI200).build()).stream()
+            ladderPricer.price(climbingKospi().marketName(MarketName.KOSPI200).build()).stream()
                 .map(LadderOrder::rate)
                 .toList());
+  }
+
+  @Test
+  @DisplayName("주입된 가중치로 사다리 간격을 계산한다")
+  void usesInjectedWeight() {
+    // 한 단만 보면 rate = baseRate + i*weight*stepRate 가 그대로 드러난다.
+    LadderInput input = climbingKospi().size(1).build();
+
+    // 가중치 1.0: rate = 3.20 + 1*1.0*1.20 = 4.40
+    assertThat(new LadderPricer(in -> 1.0).price(input).getFirst().rate()).isEqualTo(4.40);
+    // 가중치 2.0: rate = 3.20 + 1*2.0*1.20 = 5.60
+    assertThat(new LadderPricer(in -> 2.0).price(input).getFirst().rate()).isEqualTo(5.60);
   }
 
   @Test

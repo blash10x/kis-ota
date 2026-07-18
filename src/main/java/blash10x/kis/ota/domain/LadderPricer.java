@@ -24,17 +24,23 @@ public final class LadderPricer {
    */
   private static final double RATE_CAP = 29.985;
 
+  private final LadderWeight ladderWeight;
+
+  public LadderPricer(LadderWeight ladderWeight) {
+    this.ladderWeight = ladderWeight;
+  }
+
   /** 사다리를 계산한다. 건너뛴 단이 있으면 결과에서 빠지므로, 반환 크기는 {@code input.size()} 이하다. */
   public List<LadderOrder> price(LadderInput input) {
     OrderCode orderCode = input.orderCode();
     boolean sell = OrderCode.SELL == orderCode;
-    double beta = input.betaWeight();
+    double weight = ladderWeight.of(input);
     int direction = sell ? 1 : -1;
 
     List<LadderOrder> orders = new ArrayList<>();
     Set<Integer> orderedPrices = new HashSet<>();
     for (int i = 1; i <= input.size(); i++) {
-      double rate = input.baseRate() + i * beta * input.stepRate();
+      double rate = input.baseRate() + i * weight * input.stepRate();
       if (sell && input.dayOverDayRate() < 0.0) {
         rate += Math.abs(input.dayOverDayRate()) * 0.20;
       }
@@ -45,7 +51,7 @@ public final class LadderPricer {
 
       // 손실 구간에서 굳이 팔 이유가 없는 단은 건너뛴다.
       if (sell
-          && rate < 5.0 * beta
+          && rate < 5.0 * weight
           && input.evaluationProfitLossRatio() + rate < 0.5) {
         continue;
       }

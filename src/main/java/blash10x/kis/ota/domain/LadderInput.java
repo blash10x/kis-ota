@@ -15,7 +15,7 @@ import lombok.Builder;
  * @param upperPriceLimit 상한가. 전일 종가(기준가) 기준이라 현재가로 환산할 수 없어 KIS 가 계산해 준 값을 그대로 받는다
  * @param lowerPriceLimit 하한가. 상한가와 같은 이유로 KIS 값을 그대로 받는다
  * @param dayOverDayRate 전일 대비 등락률
- * @param yearBeta 스크래핑한 연간 베타 원본. 가중치는 {@link #betaWeight()} 가 계산한다
+ * @param yearBeta 스크래핑한 연간 베타 원본. {@link BetaWeight} 가 사다리 가중치로 환산한다
  * @param purchaseAvgPrice 매입 평균가. 보유하지 않은 종목(매수)은 0 이다
  * @param evaluationProfitLossRatio 평가손익률. 매도에서만 읽으며, 그 외에는 0 이다
  * @param size 사다리 최대 단수. 0 이면 주문하지 않는다
@@ -51,11 +51,6 @@ public record LadderInput(
     if (size < 0) {
       throw new IllegalArgumentException("size must not be negative: " + size);
     }
-  }
-
-  /** 사다리 간격에 곱하는 베타 가중치. 베타가 낮아도 1 근처를 유지하도록 로그를 씌운다. */
-  public double betaWeight() {
-    return Math.log(yearBeta + 0.75) + 1;
   }
 
   public double baseRate() {
