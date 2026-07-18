@@ -2,7 +2,6 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.core.util.JsonNodes;
-import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -30,7 +29,6 @@ public class ExtractionService {
   private static final Pattern PATTERN =
       Pattern.compile("var\\s+status_data\\s*=\\s*(\\{.*?});", Pattern.DOTALL);
   private final OtaProperties otaProperties;
-  private final RealtimePriceService realtimePriceService;
 
   /**
    * 사다리 가중치 계산에 쓰는 종목 지표를 한 번의 스크래핑으로 모아 온다.
@@ -41,8 +39,8 @@ public class ExtractionService {
    */
   public record StockMetrics(double yearBeta, double yearHigh, double yearLow) {}
 
-  public StockMetrics extractMetrics(String stockCode) {
-    Map<String, String> data = extract(stockCode);
+  public StockMetrics extractMetrics(ProductPrice productPrice) {
+    Map<String, String> data = extract(productPrice);
     return new StockMetrics(
         parseNumber(data.get("YR_BETA"), 1.0),
         parseNumber(data.get("YR_HIGH"), 0.0),
@@ -63,8 +61,7 @@ public class ExtractionService {
     }
   }
 
-  public Map<String, String> extract(String stockCode) {
-    ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, stockCode);
+  public Map<String, String> extract(ProductPrice productPrice) {
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
     String url = otaProperties.getExtractionUrls().get(marketName) + productPrice.shortCode();
     try {

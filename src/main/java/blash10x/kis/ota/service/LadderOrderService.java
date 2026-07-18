@@ -125,7 +125,7 @@ abstract class LadderOrderService<T> extends TradingService {
     int upperPriceLimit = Integer.parseInt(productPrice.upperPriceLimit());
     int lowerPriceLimit = Integer.parseInt(productPrice.lowerPriceLimit());
     double dayOverDayRate = Double.parseDouble(productPrice.dayOverDayRate());
-    ExtractionService.StockMetrics metrics = extractionService.extractMetrics(productNo);
+    ExtractionService.StockMetrics metrics = extractionService.extractMetrics(productPrice);
     double _beta = metrics.yearBeta();
 
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
