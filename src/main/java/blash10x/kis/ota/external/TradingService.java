@@ -4,7 +4,6 @@ import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.core.external.ExternalService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
-import blash10x.kis.ota.service.KisAuthService;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import org.slf4j.Logger;

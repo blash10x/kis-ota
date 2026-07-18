@@ -1,4 +1,4 @@
-package blash10x.kis.ota.service;
+package blash10x.kis.ota.external;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.core.external.ExternalService;

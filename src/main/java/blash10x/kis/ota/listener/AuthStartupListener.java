@@ -1,7 +1,7 @@
 package blash10x.kis.ota.listener;
 
+import blash10x.kis.ota.external.KisAuthService;
 import blash10x.kis.ota.model.AccessToken;
-import blash10x.kis.ota.service.KisAuthService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

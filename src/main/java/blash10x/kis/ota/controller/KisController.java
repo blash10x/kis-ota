@@ -1,7 +1,7 @@
 package blash10x.kis.ota.controller;
 
+import blash10x.kis.ota.external.KisAuthService;
 import blash10x.kis.ota.model.AccessToken;
-import blash10x.kis.ota.service.KisAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
