@@ -123,7 +123,8 @@ abstract class LadderOrderService<T> extends TradingService {
     int upperPriceLimit = Integer.parseInt(productPrice.upperPriceLimit());
     int lowerPriceLimit = Integer.parseInt(productPrice.lowerPriceLimit());
     double dayOverDayRate = Double.parseDouble(productPrice.dayOverDayRate());
-    double _beta = extractionService.extractYearBeta(productNo);
+    ExtractionService.StockMetrics metrics = extractionService.extractMetrics(productNo);
+    double _beta = metrics.yearBeta();
 
     MarketName marketName = MarketName.valueOf(productPrice.marketName());
     InterestStock interestStock = interestStocks.get(productNo);
@@ -137,6 +138,8 @@ abstract class LadderOrderService<T> extends TradingService {
         .lowerPriceLimit(lowerPriceLimit)
         .dayOverDayRate(dayOverDayRate)
         .yearBeta(_beta)
+        .yearHigh(metrics.yearHigh())
+        .yearLow(metrics.yearLow())
         .purchaseAvgPrice(parseOrZero(balance, Balance::purchaseAvgPrice))
         // 매도에서만 읽는 값이다. 매수에서도 파싱하면 KIS 가 빈 값을 줬을 때 낼 이유가 없는 예외를 낸다.
         .evaluationProfitLossRatio(OrderCode.SELL == orderCode
