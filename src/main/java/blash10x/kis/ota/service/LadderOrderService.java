@@ -70,6 +70,21 @@ abstract class LadderOrderService<T> {
   protected abstract T submit(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real);
 
+  /**
+   * 사다리를 가둘 실행일의 상/하한가.
+   *
+   * <p>기본은 KIS 가 계산해 준 오늘 한도(stck_mxpr/stck_llam, 전일 종가 기준)로, 오늘 실행되는 주문에 정확하다.
+   * 실행일이 오늘이 아닌 주문(예약주문)은 그날의 한도로 재정의한다 — 낡은 오늘 한도를 그대로 쓰면 당일 등락만큼
+   * 유효 구간이 잘린다(상한가 마감 시 매도 예약 0건, 하한가 마감 시 매수 예약 0건).
+   */
+  protected PriceLimits priceLimits(ProductPrice productPrice) {
+    return new PriceLimits(
+        Integer.parseInt(productPrice.upperPriceLimit()),
+        Integer.parseInt(productPrice.lowerPriceLimit()));
+  }
+
+  protected record PriceLimits(int upper, int lower) {}
+
   public List<T> order(CreateOrderRequest request) {
     OrderCode orderCode = request.orderCode();
     List<String> productNos = request.productNos();
@@ -126,9 +141,7 @@ abstract class LadderOrderService<T> {
 
     ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
     int realtimePrice = Integer.parseInt(productPrice.presentPrice());
-    // 상/하한가는 전일 종가(기준가) 기준이라 현재가로 환산할 수 없다. KIS 가 계산해 준 값을 그대로 쓴다.
-    int upperPriceLimit = Integer.parseInt(productPrice.upperPriceLimit());
-    int lowerPriceLimit = Integer.parseInt(productPrice.lowerPriceLimit());
+    PriceLimits priceLimits = priceLimits(productPrice);
     double dayOverDayRate = Double.parseDouble(productPrice.dayOverDayRate());
     ExtractionService.StockMetrics metrics = extractionService.extractMetrics(productPrice);
     double _beta = metrics.yearBeta();
@@ -141,8 +154,8 @@ abstract class LadderOrderService<T> {
         .orderCode(orderCode)
         .marketName(marketName)
         .realtimePrice(realtimePrice)
-        .upperPriceLimit(upperPriceLimit)
-        .lowerPriceLimit(lowerPriceLimit)
+        .upperPriceLimit(priceLimits.upper())
+        .lowerPriceLimit(priceLimits.lower())
         .dayOverDayRate(dayOverDayRate)
         .yearBeta(_beta)
         .yearHigh(metrics.yearHigh())

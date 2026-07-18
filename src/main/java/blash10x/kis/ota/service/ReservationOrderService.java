@@ -4,6 +4,7 @@ import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.OrderCode;
+import blash10x.kis.ota.model.ProductPrice;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -34,6 +35,16 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
       OtaProperties otaProperties) {
     super(tradingService, balanceService, realtimePriceService,
         interestStocksService, extractionService, ladderWeight, otaProperties);
+  }
+
+  /**
+   * 예약주문은 익영업일에 실행되고, 그날의 가격제한폭은 오늘 종가(장 마감 후의 현재가) ±30% 다. 정밀한 경계는
+   * {@code RATE_CAP}(±29.985%)이 먼저 걸리므로 여기는 ±30% 근사로 충분하다.
+   */
+  @Override
+  protected PriceLimits priceLimits(ProductPrice productPrice) {
+    int presentPrice = Integer.parseInt(productPrice.presentPrice());
+    return new PriceLimits((int) (presentPrice * 1.3), (int) (presentPrice * 0.7));
   }
 
   @Override
