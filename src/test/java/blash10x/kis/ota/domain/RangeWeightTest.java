@@ -32,36 +32,36 @@ class RangeWeightTest {
   }
 
   @Test
-  @DisplayName("중앙 변동성(r=0.89)에서 가중치가 1.0 이다")
-  void weightIsOneAtMedianVolatility() {
-    // MEDIAN_RATIO 로 보정한 중앙값. (189-100)/100 = 0.89
-    LadderInput input = base().yearHigh(189).yearLow(100).standardPrice(100).build();
+  @DisplayName("최저 변동폭 기준점(r=0.30)에서 가중치가 정확히 1.0 이다")
+  void weightIsOneAtNeutralVolatility() {
+    // NEUTRAL_RATIO 로 보정한 기준점. (130-100)/100 = 0.30
+    LadderInput input = base().yearHigh(130).yearLow(100).standardPrice(100).build();
     assertThat(rangeWeight.of(input)).isCloseTo(1.0, within(0.001));
   }
 
   @Test
-  @DisplayName("449450 실제 값(변동폭 77%)은 중앙보다 낮아 하한 1.0 에 눌린다")
+  @DisplayName("449450 실제 값(변동폭 77%)은 기준점 위라 1.39 근처가 된다")
   void weightForRealEtf() {
-    // (87,946 - 46,061) / 54,240 = 0.7722 → raw log(0.7722+0.11)+1 = 0.8747 → 하한 1.0
+    // (87,946 - 46,061) / 54,240 = 0.7722 → log(0.7722+0.70)+1 = 1.3868
     LadderInput input = base().yearHigh(87_946).yearLow(46_061).standardPrice(54_240).build();
-    assertThat(rangeWeight.of(input)).isEqualTo(1.0);
+    assertThat(rangeWeight.of(input)).isCloseTo(1.3868, within(0.001));
   }
 
   @Test
-  @DisplayName("중앙값 위에서는 변동성이 커질수록 가중치가 커진다")
+  @DisplayName("기준점 위에서는 변동성이 커질수록 가중치가 커진다")
   void weightIncreasesWithVolatility() {
-    // 하한(중앙값 아래)·상한에 걸리지 않는 구간(r=1.00, 1.20)에서 단조 증가를 본다.
+    // 하한·상한에 걸리지 않는 구간(r=1.00, 1.20)에서 단조 증가를 본다.
     double low = rangeWeight.of(base().yearHigh(200).yearLow(100).standardPrice(100).build());
     double high = rangeWeight.of(base().yearHigh(220).yearLow(100).standardPrice(100).build());
-    assertThat(low).isCloseTo(1.1044, within(0.001));
-    assertThat(high).isCloseTo(1.2700, within(0.001));
+    assertThat(low).isCloseTo(1.5306, within(0.001));
+    assertThat(high).isCloseTo(1.6419, within(0.001));
     assertThat(high).isGreaterThan(low);
   }
 
   @Test
   @DisplayName("극단값은 사다리 간격 정규화가 기대는 1-스케일(1.0~2.5)로 가둔다")
   void clampsToOneScale() {
-    // r=0.1 → raw 0.489 → 하한 1.0 으로 올린다. 저변동폭 종목의 최소 단 간격(설정 요율) 보장이다.
+    // r=0.1 → raw log(0.8)+1 = 0.777 → 하한 1.0 으로 올린다. 저변동폭 종목의 최소 단 간격(설정 요율) 보장이다.
     assertThat(rangeWeight.of(base().yearHigh(110).yearLow(100).standardPrice(100).build()))
         .isEqualTo(1.0);
     // r 이 아무리 커도 상한 2.5 를 넘지 않는다
