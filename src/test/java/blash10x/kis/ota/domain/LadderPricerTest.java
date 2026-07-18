@@ -44,7 +44,7 @@ class LadderPricerTest {
 
   /**
    * 평단(10,000)보다 현재가(70,000)가 한참 위인 수익 종목. 기준점이 현재가라 주문가는 현재가에서
-   * rate = baseRate + i*weight*stepRate 만큼 벌어진다. 5단 주문가는 73,600 / 74,900 / 76,200 / 77,500 / 78,800.
+   * rate = baseRate + i*weight*stepRate 만큼 벌어진다. 5단 주문가는 73,700 / 75,100 / 76,600 / 78,000 / 79,400.
    */
   private static LadderInput.LadderInputBuilder climbingKospi() {
     return LadderInput.builder()
@@ -75,13 +75,13 @@ class LadderPricerTest {
         .isSorted()
         .allSatisfy(price -> assertThat(price).isGreaterThan(64_183).isLessThanOrEqualTo(70_510));
 
-    // 단 간격이 일정하다(이론 간격 ≈ 373.6원, 호가단위 5원 반올림으로 370~375). 첫 간격만 튀던 문제가 사라졌다.
+    // 단 간격이 일정하다(이론 간격 ≈ 448.3원, 호가단위 5원 반올림으로 445~450). 첫 간격만 튀던 문제가 사라졌다.
     List<Integer> prices = orders.stream().map(LadderOrder::unitPrice).toList();
     for (int i = 1; i < prices.size(); i++) {
-      assertThat(prices.get(i) - prices.get(i - 1)).isBetween(370, 375);
+      assertThat(prices.get(i) - prices.get(i - 1)).isBetween(445, 450);
     }
-    // baseRate 를 뺀 만큼 사다리 바닥이 낮아져, 같은 상한가(70,510) 안에 17단이 들어간다.
-    assertThat(orders).hasSize(17);
+    // baseRate 를 뺀 만큼 사다리 바닥이 낮아져, 같은 상한가(70,510) 안에 15단이 들어간다.
+    assertThat(orders).hasSize(15);
   }
 
   @Test
@@ -127,9 +127,9 @@ class LadderPricerTest {
         .stepRates(STEP_RATES)
         .build());
 
-    // 실계좌 로그에서 5단(2,401,000, +30.35%)부터 제한폭 초과였다. 4단까지만 살아남는다.
+    // 5단(2,411,000, +30.9%)부터 제한폭 초과라 4단까지만 살아남는다.
     assertThat(orders).extracting(LadderOrder::unitPrice)
-        .containsExactly(2_199_000, 2_249_000, 2_300_000, 2_350_000);
+        .containsExactly(2_199_000, 2_252_000, 2_305_000, 2_358_000);
     assertThat(orders).extracting(LadderOrder::rate).allSatisfy(
         rate -> assertThat(rate).isLessThanOrEqualTo(29.985));
   }
@@ -158,12 +158,12 @@ class LadderPricerTest {
     // 상한가가 넉넉하면 5단 전부 나간다.
     assertThat(ladderPricer.price(climbingKospi().build()))
         .extracting(LadderOrder::unitPrice)
-        .containsExactly(73_600, 74_900, 76_200, 77_500, 78_800);
+        .containsExactly(73_700, 75_100, 76_600, 78_000, 79_400);
 
-    // 상한가를 3단(76,200)과 4단(77,500) 사이에 걸면 3건만 남는다.
+    // 상한가를 3단(76,600)과 4단(78,000) 사이에 걸면 3건만 남는다.
     assertThat(ladderPricer.price(climbingKospi().upperPriceLimit(77_000).build()))
         .extracting(LadderOrder::unitPrice)
-        .containsExactly(73_600, 74_900, 76_200);
+        .containsExactly(73_700, 75_100, 76_600);
   }
 
   @Test
