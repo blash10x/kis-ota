@@ -62,7 +62,8 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
     if (response == null) {
       return new ReservationOrderSeq("Unknown");
     }
-    if (response.output == null) {
+    // 성공 판정의 계약은 rt_cd("0") 이다. output 유무로만 보면 실패 응답에 output 골격이 실려 올 때 성공으로 오인한다.
+    if (!"0".equals(response.rt_cd) || response.output == null) {
       LOGGER.warn("{} order rejected: rt_cd={}, msg_cd={}, msg={}",
           productNo, response.rt_cd, response.msg_cd, response.msg);
       return new ReservationOrderSeq("");

@@ -78,6 +78,10 @@ public class TradingService {
             });
   }
 
+  /**
+   * POST 는 재시도하지 않는다. 주문 API 는 멱등하지 않아서, KIS 에 접수된 뒤 응답 단계에서 실패한 요청을
+   * 재전송하면 같은 주문이 중복 체결된다. 실패는 호출자에게 그대로 전파되어 해당 종목만 건너뛴다.
+   */
   public <T> Mono<T> post(
       String path,
       MultiValueMap<String, String> headers,
@@ -86,7 +90,6 @@ public class TradingService {
       Class<T> responseType) {
     return externalService
         .post(path, headers, queryParams, requestBody, JsonNode.class)
-        .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
         .mapNotNull(
             responseEntity -> {
               JsonNode jsonNode = responseEntity.getBody();
