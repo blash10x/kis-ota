@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.OrderCode;
@@ -29,9 +30,10 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
-      LadderWeight ladderWeight) {
+      LadderWeight ladderWeight,
+      OtaProperties otaProperties) {
     super(tradingService, balanceService, realtimePriceService,
-        interestStocksService, extractionService, ladderWeight);
+        interestStocksService, extractionService, ladderWeight, otaProperties);
   }
 
   @Override

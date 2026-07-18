@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.config.OtaProperties;
 import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
 import blash10x.kis.ota.domain.LadderInput;
@@ -45,6 +46,7 @@ abstract class LadderOrderService<T> {
   private final RealtimePriceService realtimePriceService;
   private final InterestStocksService interestStocksService;
   private final ExtractionService extractionService;
+  private final OtaProperties otaProperties;
 
   protected LadderOrderService(
       TradingService tradingService,
@@ -52,7 +54,8 @@ abstract class LadderOrderService<T> {
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
-      LadderWeight ladderWeight) {
+      LadderWeight ladderWeight,
+      OtaProperties otaProperties) {
     this.tradingService = tradingService;
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
@@ -60,6 +63,7 @@ abstract class LadderOrderService<T> {
     this.extractionService = extractionService;
     this.ladderWeight = ladderWeight;
     this.ladderPricer = new LadderPricer(ladderWeight);
+    this.otaProperties = otaProperties;
   }
 
   /** 주문 1건을 전송한다. real 이 false 면 전송하지 않는다. */
@@ -115,7 +119,7 @@ abstract class LadderOrderService<T> {
       Map<String, InterestStock> interestStocks,
       List<T> results) {
     OrderCode orderCode = request.orderCode();
-    Map<OrderCode, Integer> maxRepetitions = request.maxRepetitions();
+    Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
     Map<MarketName, Double> baseRates = request.baseRates().get(orderCode);
     Map<MarketName, Double> stepRates = request.stepRates().get(orderCode);
     boolean real = request.real();
