@@ -1,6 +1,5 @@
 package blash10x.kis.ota.service;
 
-import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,13 +14,15 @@ import org.springframework.util.MultiValueMap;
  * @author myungsik.sung@gmail.com
  */
 @Service
-public class RealtimePriceService extends TradingService {
+public class RealtimePriceService {
   private static final Logger LOGGER = LoggerFactory.getLogger(BalanceService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/inquire-price";
   private static final String TR_ID = "FHKST01010100";
 
-  public RealtimePriceService(KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(kisProperties, kisAuthService);
+  private final KisClient kisClient;
+
+  public RealtimePriceService(KisClient kisClient) {
+    this.kisClient = kisClient;
   }
 
   public List<ProductPrice> inquirePrices(MarketCode marketDivisionCode, List<String> productNos) {
@@ -31,9 +32,9 @@ public class RealtimePriceService extends TradingService {
   }
 
   public ProductPrice inquirePrice(MarketCode marketDivisionCode, String productNo) {
-    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(marketDivisionCode, productNo);
-    Response response = get(PATH, headers, queryParams, Response.class).block();
+    Response response = kisClient.get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : null;
   }
 

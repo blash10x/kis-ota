@@ -1,6 +1,5 @@
 package blash10x.kis.ota.service;
 
-import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.NormalProcessingResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -13,26 +12,28 @@ import org.springframework.util.MultiValueMap;
  * @author myungsik.sung@gmail.com
  */
 @Service
-public class ReservationOrderCancelService extends TradingService {
+public class ReservationOrderCancelService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ReservationOrderCancelService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/trading/order-resv-rvsecncl";
   private static final String TR_ID = "CTSC0009U";
 
-  public ReservationOrderCancelService(KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(kisProperties, kisAuthService);
+  private final KisClient kisClient;
+
+  public ReservationOrderCancelService(KisClient kisClient) {
+    this.kisClient = kisClient;
   }
 
   public NormalProcessingResult cancelReservationOrder(String reservationOrderSeq) {
-    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
     Request request = buildRequest(reservationOrderSeq);
-    Response response = post(PATH, headers, null, request, Response.class).block();
+    Response response = kisClient.post(PATH, headers, null, request, Response.class).block();
     return response != null ? response.output : new NormalProcessingResult("Unknown");
   }
 
   private Request buildRequest(String reservationOrderSeq) {
     return Request.builder()
-        .accountNo(getAccountNo())
-        .accountProductCode(getAccountProductCode())
+        .accountNo(kisClient.getAccountNo())
+        .accountProductCode(kisClient.getAccountProductCode())
         .reservationOrderSeq(reservationOrderSeq)
         .build();
   }

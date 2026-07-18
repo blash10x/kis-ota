@@ -1,6 +1,5 @@
 package blash10x.kis.ota.service;
 
-import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
 import blash10x.kis.ota.domain.LadderInput;
 import blash10x.kis.ota.domain.LadderOrder;
@@ -25,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author myungsik.sung@gmail.com
  */
-abstract class LadderOrderService<T> extends TradingService {
+abstract class LadderOrderService<T> {
   private static final String INTEREST_STOCK_GROUP = "001";
 
   /** 주문 전송 간격. 실전계좌는 초당 20건(50ms)까지라 여유를 크게 둔다. */
@@ -35,6 +34,8 @@ abstract class LadderOrderService<T> extends TradingService {
   protected static final long MOCK_ORDER_INTERVAL_MILLIS = 100;
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  /** 주문 전송에 쓰는 KIS 클라이언트. 하위 서비스의 {@link #submit} 이 사용한다. */
+  protected final KisClient kisClient;
   // 활성 가중치 알고리즘은 전역 설정으로 고른다(LadderWeightConfig). 사다리 로그에 가중치를 찍어야 해 파이서와 함께 들고 있다.
   private final LadderWeight ladderWeight;
   private final LadderPricer ladderPricer;
@@ -45,14 +46,13 @@ abstract class LadderOrderService<T> extends TradingService {
   private final ExtractionService extractionService;
 
   protected LadderOrderService(
-      KisProperties kisProperties,
-      KisAuthService kisAuthService,
+      KisClient kisClient,
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight) {
-    super(kisProperties, kisAuthService);
+    this.kisClient = kisClient;
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
     this.interestStocksService = interestStocksService;

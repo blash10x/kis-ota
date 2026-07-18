@@ -6,7 +6,6 @@ import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
-import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -19,12 +18,17 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 /**
+ * KIS REST API 호출을 담당하는 공용 클라이언트. 인증 헤더 구성·재시도·계정 정보 접근을 모아 둔다.
+ *
+ * <p>이전에는 이 기능을 {@code TradingService} 추상 베이스에서 상속으로 나눠 썼으나, 잔고 조회처럼 무관한 서비스까지 HTTP 를 물려받고
+ * 서비스마다 {@link ExternalService}(WebClient)와 토큰 캐시가 따로 생기는 문제가 있어 합성으로 바꿨다. 빈 하나라 WebClient·토큰이 공유된다.
+ *
  * @author myungsik.sung@gmail.com
  */
 @Service
-@Data
-abstract class TradingService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TradingService.class);
+public class KisClient {
+  private static final Logger LOGGER = LoggerFactory.getLogger(KisClient.class);
+
   private final KisProperties kisProperties;
   private final KisAuthService kisAuthService;
   private final String appKey;
@@ -34,7 +38,7 @@ abstract class TradingService {
   private final ExternalService externalService;
   private AccessToken accessToken;
 
-  public TradingService(KisProperties kisProperties, KisAuthService kisAuthService) {
+  public KisClient(KisProperties kisProperties, KisAuthService kisAuthService) {
     this.kisProperties = kisProperties;
     this.kisAuthService = kisAuthService;
 
@@ -93,7 +97,7 @@ abstract class TradingService {
 
   MultiValueMap<String, String> buildRequestHeaders(String trId) {
     if (accessToken == null) {
-      accessToken = getKisAuthService().authorize();
+      accessToken = kisAuthService.authorize();
     }
 
     String authorization = accessToken.accessToken();
@@ -113,5 +117,17 @@ abstract class TradingService {
     } catch (InterruptedException e) {
       LOGGER.warn("Interrupted while waiting for sleep", e);
     }
+  }
+
+  public KisProperties getKisProperties() {
+    return kisProperties;
+  }
+
+  public String getAccountNo() {
+    return accountNo;
+  }
+
+  public String getAccountProductCode() {
+    return accountProductCode;
   }
 }

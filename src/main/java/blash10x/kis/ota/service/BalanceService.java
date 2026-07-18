@@ -1,6 +1,5 @@
 package blash10x.kis.ota.service;
 
-import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.model.Balance;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -16,19 +15,21 @@ import org.springframework.util.MultiValueMap;
  * @author myungsik.sung@gmail.com
  */
 @Service
-public class BalanceService extends TradingService {
+public class BalanceService {
   private static final Logger LOGGER = LoggerFactory.getLogger(BalanceService.class);
   private static final String PATH = "/uapi/domestic-stock/v1/trading/inquire-balance";
   private static final String TR_ID = "TTTC8434R";
 
-  public BalanceService(KisProperties kisProperties, KisAuthService kisAuthService) {
-    super(kisProperties, kisAuthService);
+  private final KisClient kisClient;
+
+  public BalanceService(KisClient kisClient) {
+    this.kisClient = kisClient;
   }
 
   public List<Balance> inquireBalances() {
-    MultiValueMap<String, String> headers = buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams();
-    Response response = get(PATH, headers, queryParams, Response.class).block();
+    Response response = kisClient.get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : List.of();
   }
 
@@ -39,8 +40,8 @@ public class BalanceService extends TradingService {
 
   private MultiValueMap<String, String> buildRequestParams() {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-    queryParams.add("CANO", getAccountNo());
-    queryParams.add("ACNT_PRDT_CD", getAccountProductCode());
+    queryParams.add("CANO", kisClient.getAccountNo());
+    queryParams.add("ACNT_PRDT_CD", kisClient.getAccountProductCode());
 
     queryParams.add("AFHR_FLPR_YN", "N");
     queryParams.add("OFL_YN", "");
