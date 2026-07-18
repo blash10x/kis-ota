@@ -120,8 +120,8 @@ abstract class LadderOrderService<T> {
       List<T> results) {
     OrderCode orderCode = request.orderCode();
     Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
-    Map<MarketName, Double> baseRates = request.baseRates().get(orderCode);
-    Map<MarketName, Double> stepRates = request.stepRates().get(orderCode);
+    Map<MarketName, Double> baseRates = otaProperties.getBaseRates().get(orderCode);
+    Map<MarketName, Double> stepRates = otaProperties.getStepRates().get(orderCode);
     boolean real = request.real();
 
     ProductPrice productPrice = realtimePriceService.inquirePrice(MarketCode.J, productNo);
