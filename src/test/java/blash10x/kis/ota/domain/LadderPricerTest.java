@@ -23,7 +23,10 @@ class LadderPricerTest {
 
   private final LadderPricer ladderPricer = new LadderPricer(new BetaWeight());
 
-  /** 449450 PLUS K방산. 평단보다 14.65% 아래에서 매도 사다리를 낸 실제 사례. */
+  /**
+   * 449450 PLUS K방산. 현재가(54,240)가 평단(63,547.59)보다 14.65% 아래인 손실 종목이라, 사다리 기준점이
+   * 손익분기가(평단*1.01 = 64,183.07)로 잡힌다.
+   */
   private static LadderInput.LadderInputBuilder deepUnderwaterEtf() {
     return LadderInput.builder()
         .orderCode(OrderCode.SELL)
@@ -34,15 +37,14 @@ class LadderPricerTest {
         .dayOverDayRate(0.0)
         .yearBeta(0.31)
         .purchaseAvgPrice(63_547.59)
-        .evaluationProfitLossRatio(-14.65)
         .size(20)
         .baseRates(BASE_RATES)
         .stepRates(STEP_RATES);
   }
 
   /**
-   * 평단보다 한참 위에서 오르는 KOSPI200 매도 사다리. 손익분기 보정·손실 회피 skip 이 끼어들지 않아 rate = baseRate + i*weight*stepRate
-   * 가 그대로 드러난다. 5단 주문가는 73,600 / 74,900 / 76,200 / 77,500 / 78,800.
+   * 평단(10,000)보다 현재가(70,000)가 한참 위인 수익 종목. 기준점이 현재가라 주문가는 현재가에서
+   * rate = baseRate + i*weight*stepRate 만큼 벌어진다. 5단 주문가는 73,600 / 74,900 / 76,200 / 77,500 / 78,800.
    */
   private static LadderInput.LadderInputBuilder climbingKospi() {
     return LadderInput.builder()
@@ -54,41 +56,71 @@ class LadderPricerTest {
         .dayOverDayRate(0.0)
         .yearBeta(1.0)
         .purchaseAvgPrice(10_000)
-        .evaluationProfitLossRatio(600.0)
         .size(5)
         .baseRates(BASE_RATES)
         .stepRates(STEP_RATES);
   }
 
   @Test
-  @DisplayName("깊게 물린 매도 사다리는 손익분기점 한 건으로 수렴한다")
-  void deeplyUnderwaterSellCollapsesToBreakEven() {
-    // 20단 최대 rate 가 13.69% 라, 손익분기 보정을 벗어나는 데 필요한 18.33% 에 끝내 닿지 못한다.
-    // 보정 없이 계산하면 전 구간이 평단*1.01 = 64,183.07 로 눌리고, ETF 호가(5원) 올림으로 전부 64,185 가 된다.
+  @DisplayName("손실 종목 매도는 손익분기가 그 자체에서 시작해 등간격으로 오른다")
+  void underwaterSellLaddersUpFromBreakEven() {
     List<LadderOrder> orders = ladderPricer.price(deepUnderwaterEtf().build());
 
-    assertThat(orders).extracting(LadderOrder::unitPrice).containsExactly(64_185);
-    // 실계좌 dry-run 로그에 5.54 로 찍힌 그 단이다. Math.log 구현차가 있으니 표시 정밀도까지만 본다.
-    assertThat(orders.getFirst().rate()).isCloseTo(5.5423, within(0.0001));
+    // 첫 단은 손익분기가(64,183.07) 그 자체다(호가단위 올림 64,185). baseRate 를 얹지 않아, 깊은 손실
+    // 종목에서도 손익분기가에 걸어 두는 한 건이 살아남는다.
+    assertThat(orders.getFirst().unitPrice()).isEqualTo(64_185);
+    // 모든 단이 손익분기가 위, 상한가 이하이고 서로 다르며 단조 증가한다.
+    assertThat(orders).extracting(LadderOrder::unitPrice)
+        .doesNotHaveDuplicates()
+        .isSorted()
+        .allSatisfy(price -> assertThat(price).isGreaterThan(64_183).isLessThanOrEqualTo(70_510));
+
+    // 단 간격이 일정하다(이론 간격 ≈ 373.6원, 호가단위 5원 반올림으로 370~375). 첫 간격만 튀던 문제가 사라졌다.
+    List<Integer> prices = orders.stream().map(LadderOrder::unitPrice).toList();
+    for (int i = 1; i < prices.size(); i++) {
+      assertThat(prices.get(i) - prices.get(i - 1)).isBetween(370, 375);
+    }
+    // baseRate 를 뺀 만큼 사다리 바닥이 낮아져, 같은 상한가(70,510) 안에 17단이 들어간다.
+    assertThat(orders).hasSize(17);
   }
 
   @Test
-  @DisplayName("같은 가격은 한 번만 주문한다")
-  void doesNotOrderTheSamePriceTwice() {
+  @DisplayName("rate 는 실제 주문가의 현재가 대비 등락률과 일치한다")
+  void rateReflectsActualOrderPrice() {
+    // 손익분기 앵커로 주문가가 현재가에서 크게 벌어져도, rate 는 명목값이 아니라 실제 주문가 기준으로 기록된다.
     List<LadderOrder> orders = ladderPricer.price(deepUnderwaterEtf().build());
 
-    // 중복 제거가 없으면 이 사례는 64,185 한 가격에 15건이 나간다.
-    assertThat(orders).extracting(LadderOrder::unitPrice).doesNotHaveDuplicates();
+    assertThat(orders).allSatisfy(order ->
+        assertThat(order.rate())
+            .isCloseTo((order.unitPrice() - 54_240) * 100.0 / 54_240, within(1e-9)));
+    // 첫 단(64,185)의 실효 등락률은 +18.34% 다. 현재가가 손익분기가보다 그만큼 아래라는 뜻이다.
+    assertThat(orders.getFirst().rate()).isCloseTo(18.335, within(0.001));
   }
 
   @Test
   @DisplayName("첫 단부터 상한가를 넘으면 한 건도 내지 않는다")
   void emptyWhenEvenTheFirstRungExceedsUpperLimit() {
-    // 상한가를 손익분기점(64,185) 바로 아래로 낮추면 첫 단부터 걸린다.
+    // 상한가를 손익분기가(64,185) 바로 아래로 낮추면 첫 단부터 걸린다.
     List<LadderOrder> orders =
         ladderPricer.price(deepUnderwaterEtf().upperPriceLimit(64_180).build());
 
     assertThat(orders).isEmpty();
+  }
+
+  @Test
+  @DisplayName("하락일 보정은 손익분기가 사다리에는 붙지 않는다")
+  void downDayBumpDoesNotMoveBreakEvenLadder() {
+    // 하락일 보정은 눌린 현재가 기준의 사다리를 밀어 올리는 장치다. 손익분기가 기준 사다리에 붙이면
+    // 손익분기가에 걸어 두는 첫 단이 밀려 올라가 취지가 깨진다.
+    List<LadderOrder> flat = ladderPricer.price(deepUnderwaterEtf().dayOverDayRate(0.0).build());
+    List<LadderOrder> down = ladderPricer.price(deepUnderwaterEtf().dayOverDayRate(-3.0).build());
+    assertThat(down).isEqualTo(flat);
+
+    // 수익 종목(현재가 기준)에는 기존대로 붙는다. 첫 단이 |전일대비| * 0.20 만큼 위로 밀린다.
+    int flatFirst = ladderPricer.price(climbingKospi().build()).getFirst().unitPrice();
+    int downFirst =
+        ladderPricer.price(climbingKospi().dayOverDayRate(-3.0).build()).getFirst().unitPrice();
+    assertThat(downFirst).isGreaterThan(flatFirst);
   }
 
   @Test
@@ -134,18 +166,18 @@ class LadderPricerTest {
   @Test
   @DisplayName("주입된 가중치로 사다리 간격을 계산한다")
   void usesInjectedWeight() {
-    // 한 단만 보면 rate = baseRate + i*weight*stepRate 가 그대로 드러난다.
+    // 한 단만 보면 주문가 = 현재가 * (1 + (baseRate + i*weight*stepRate)/100) 이 그대로 드러난다.
     LadderInput input = climbingKospi().size(1).build();
 
-    // 가중치 1.0: rate = 3.20 + 1*1.0*1.20 = 4.40
-    assertThat(new LadderPricer(in -> 1.0).price(input).getFirst().rate()).isEqualTo(4.40);
-    // 가중치 2.0: rate = 3.20 + 1*2.0*1.20 = 5.60
-    assertThat(new LadderPricer(in -> 2.0).price(input).getFirst().rate()).isEqualTo(5.60);
+    // 가중치 1.0: rate = 3.20 + 1*1.0*1.20 = 4.40 → 70,000*1.044 = 73,080 → 호가단위 올림 73,100
+    assertThat(new LadderPricer(in -> 1.0).price(input).getFirst().unitPrice()).isEqualTo(73_100);
+    // 가중치 2.0: rate = 3.20 + 1*2.0*1.20 = 5.60 → 70,000*1.056 = 73,920 → 호가단위 올림 74,000
+    assertThat(new LadderPricer(in -> 2.0).price(input).getFirst().unitPrice()).isEqualTo(74_000);
   }
 
   @Test
-  @DisplayName("보유하지 않은 종목은 손익분기 보정 없이 매수 사다리를 낸다")
-  void buyIgnoresBreakEvenClamp() {
+  @DisplayName("보유하지 않은 종목은 현재가 기준으로 매수 사다리를 낸다")
+  void buyLaddersDownFromCurrentPrice() {
     List<LadderOrder> orders = ladderPricer.price(LadderInput.builder()
         .orderCode(OrderCode.BUY)
         .marketName(MarketName.ETF)
@@ -155,13 +187,14 @@ class LadderPricerTest {
         .dayOverDayRate(0.0)
         .yearBeta(1.0)
         .purchaseAvgPrice(0.0)
-        .evaluationProfitLossRatio(0.0)
         .size(3)
         .baseRates(BASE_RATES)
         .stepRates(STEP_RATES)
         .build());
 
-    assertThat(orders).hasSize(3);
+    assertThat(orders).extracting(LadderOrder::unitPrice)
+        .isSortedAccordingTo(Comparator.reverseOrder())
+        .allSatisfy(price -> assertThat(price).isLessThan(10_000));
     assertThat(orders).extracting(LadderOrder::rate).allSatisfy(
         rate -> assertThat(rate).isNegative());
   }

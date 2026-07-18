@@ -19,8 +19,7 @@ import lombok.Builder;
  * @param yearHigh 스크래핑한 52주 최고가. 스크래핑 실패 시 0. 변동폭 기반 가중치가 쓴다
  * @param yearLow 스크래핑한 52주 최저가. 스크래핑 실패 시 0. 변동폭 기반 가중치가 쓴다
  * @param standardPrice 기준가(전일 종가). 변동폭을 가격 대비 비율로 환산하는 분모. {@link RangeWeight} 가 쓴다
- * @param purchaseAvgPrice 매입 평균가. 보유하지 않은 종목(매수)은 0 이다
- * @param evaluationProfitLossRatio 평가손익률. 매도에서만 읽으며, 그 외에는 0 이다
+ * @param purchaseAvgPrice 매입 평균가. 손실 종목 매도의 사다리 기준점(손익분기가)이 된다. 보유하지 않은 종목(매수)은 0 이다
  * @param size 사다리 최대 단수. 0 이면 주문하지 않는다
  * @param baseRates 시장별 기본 요율
  * @param stepRates 시장별 단계 요율
@@ -39,7 +38,6 @@ public record LadderInput(
     double yearLow,
     double standardPrice,
     double purchaseAvgPrice,
-    double evaluationProfitLossRatio,
     int size,
     Map<MarketName, Double> baseRates,
     Map<MarketName, Double> stepRates) {

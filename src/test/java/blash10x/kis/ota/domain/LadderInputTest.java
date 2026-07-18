@@ -25,7 +25,6 @@ class LadderInputTest {
         .dayOverDayRate(0.0)
         .yearBeta(1.0)
         .purchaseAvgPrice(1_000)
-        .evaluationProfitLossRatio(900.0)
         .size(3)
         .baseRates(Map.of(MarketName.ETF, 2.05))
         .stepRates(Map.of(MarketName.ETF, 0.55));

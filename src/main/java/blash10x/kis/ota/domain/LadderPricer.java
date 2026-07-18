@@ -37,31 +37,41 @@ public final class LadderPricer {
     double weight = ladderWeight.of(input);
     int direction = sell ? 1 : -1;
 
+    // 사다리를 벌리는 기준점. 손실 종목(현재가 < 손익분기가) 매도는 손익분기가(평단*1.01)를 기준점으로 삼는다.
+    // 그러면 모든 단이 손익분기가 위에서 등간격으로 벌어져 손실 회피가 구조적으로 보장되고, 현재가 기준으로
+    // 낮은 단들이 손익분기가로 눌려 한 가격으로 뭉쳤다 중복 제거되며 붕괴하던 문제가 사라진다. 현재가가 이미
+    // 손익분기가 위면(수익 종목) 현재가가 그대로 기준점이라 기존 동작과 같다. 매수는 손익분기 개념이 없다.
+    double anchor = input.realtimePrice();
+    boolean fromBreakEven = false;
+    if (sell) {
+      double breakEven = input.purchaseAvgPrice() * 1.01;
+      if (breakEven > anchor) {
+        anchor = breakEven;
+        fromBreakEven = true;
+      }
+    }
+
     List<LadderOrder> orders = new ArrayList<>();
     Set<Integer> orderedPrices = new HashSet<>();
     for (int i = 1; i <= input.size(); i++) {
-      double rate = input.baseRate() + i * weight * input.stepRate();
-      if (sell && input.dayOverDayRate() < 0.0) {
-        rate += Math.abs(input.dayOverDayRate()) * 0.20;
+      double rate;
+      if (fromBreakEven) {
+        // 손익분기가에서 시작하는 사다리는 첫 단(i=1)이 손익분기가 그 자체다. baseRate 를 얹으면 깊은 손실
+        // 종목에서 첫 단부터 상한가를 넘어, 손익분기가에 걸어 둘 수 있는 한 건마저 사라진다. 하락일 보정도
+        // 빼는데, 그 보정은 눌린 현재가 기준의 사다리를 밀어 올리는 장치라 현재가와 무관한 기준점에서는 의미가 없다.
+        rate = (i - 1) * weight * input.stepRate();
+      } else {
+        rate = input.baseRate() + i * weight * input.stepRate();
+        if (sell && input.dayOverDayRate() < 0.0) {
+          rate += Math.abs(input.dayOverDayRate()) * 0.20;
+        }
       }
 
       if (rate > RATE_CAP) {
         break;
       }
 
-      // 손실 구간에서 굳이 팔 이유가 없는 단은 건너뛴다.
-      if (sell
-          && rate < 5.0 * weight
-          && input.evaluationProfitLossRatio() + rate < 0.5) {
-        continue;
-      }
-
-      double unitPrice = input.realtimePrice() * (100 + direction * rate) / 100;
-      double gain = unitPrice - input.purchaseAvgPrice() * 1.01;
-      if (sell && gain < 0) {
-        unitPrice -= gain;
-      }
-
+      double unitPrice = anchor * (100 + direction * rate) / 100;
       int tickPrice = TickSize.round(unitPrice, input.marketName(), orderCode);
 
       // 매도는 i 가 커질수록 주문가가 오르고 매수는 내리므로, 한쪽을 벗어나면 이후도 전부 벗어난다.
@@ -69,12 +79,16 @@ public final class LadderPricer {
         break;
       }
 
-      // 손익분기 보정(gain)이나 호가단위 반올림 때문에 앞 단과 같은 가격이 나올 수 있다. 같은 가격은 한 번만 낸다.
+      // 호가단위 반올림 때문에 앞 단과 같은 가격이 나올 수 있다. 같은 가격은 한 번만 낸다.
       if (!orderedPrices.add(tickPrice)) {
         continue;
       }
 
-      orders.add(new LadderOrder(tickPrice, direction * rate));
+      // rate 는 실제 주문가의 현재가 대비 등락률이다(LadderOrder 계약). 손실 종목은 기준점이 손익분기가라
+      // 주문가가 현재가에서 크게 벌어지는데, 명목 rate 가 아니라 이 실제 값을 담아야 로그·후속 처리가
+      // 주문가와 어긋나지 않는다. 매도는 양수, 매수는 음수가 된다.
+      double actualRate = (tickPrice - input.realtimePrice()) * 100.0 / input.realtimePrice();
+      orders.add(new LadderOrder(tickPrice, actualRate));
     }
     return orders;
   }

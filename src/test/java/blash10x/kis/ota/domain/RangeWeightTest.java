@@ -26,7 +26,6 @@ class RangeWeightTest {
         .dayOverDayRate(0.0)
         .yearBeta(1.0)
         .purchaseAvgPrice(0.0)
-        .evaluationProfitLossRatio(0.0)
         .size(1)
         .baseRates(Map.of(MarketName.ETF, 2.05))
         .stepRates(Map.of(MarketName.ETF, 0.55));
@@ -60,7 +59,7 @@ class RangeWeightTest {
   }
 
   @Test
-  @DisplayName("극단값은 손실 회피 가드가 기대는 1-스케일(0.5~2.5)로 가둔다")
+  @DisplayName("극단값은 사다리 간격 정규화가 기대는 1-스케일(0.5~2.5)로 가둔다")
   void clampsToOneScale() {
     // r=0.1 → raw 0.489 → 하한 0.5 로 올린다
     assertThat(rangeWeight.of(base().yearHigh(110).yearLow(100).standardPrice(100).build()))

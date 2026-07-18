@@ -28,7 +28,6 @@ class BetaWeightTest {
         .dayOverDayRate(0.0)
         .yearBeta(yearBeta)
         .purchaseAvgPrice(1_000)
-        .evaluationProfitLossRatio(0.0)
         .size(1)
         .baseRates(Map.of(MarketName.KOSPI200, 3.20))
         .stepRates(Map.of(MarketName.KOSPI200, 1.20))
@@ -44,9 +43,9 @@ class BetaWeightTest {
 
   @ParameterizedTest(name = "yearBeta={0}")
   @ValueSource(doubles = {0.0, 0.3, 1.0, 2.0, 3.0})
-  @DisplayName("가중치는 손실 회피 가드가 기대는 1 스케일(0.5~2.5)을 벗어나지 않는다")
+  @DisplayName("가중치는 사다리 간격 정규화가 기대는 1 스케일(0.5~2.5)을 벗어나지 않는다")
   void weightStaysNearOneScale(double yearBeta) {
-    // LadderWeight 계약: 값이 1 근처여야 rate < 5.0*weight 가드가 유효하다.
+    // LadderWeight 계약: 값이 1 근처여야 단계 간격(weight*stepRate)이 의도한 스케일을 유지한다.
     assertThat(betaWeight.of(withBeta(yearBeta))).isBetween(0.5, 2.5);
   }
 

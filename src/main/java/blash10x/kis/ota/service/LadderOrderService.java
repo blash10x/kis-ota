@@ -145,10 +145,6 @@ abstract class LadderOrderService<T> {
         .yearLow(metrics.yearLow())
         .standardPrice(Double.parseDouble(productPrice.standardPrice()))
         .purchaseAvgPrice(parseOrZero(balance, Balance::purchaseAvgPrice))
-        // 매도에서만 읽는 값이다. 매수에서도 파싱하면 KIS 가 빈 값을 줬을 때 낼 이유가 없는 예외를 낸다.
-        .evaluationProfitLossRatio(OrderCode.SELL == orderCode
-            ? parseOrZero(balance, Balance::evaluationProfitLossRatio)
-            : 0.0)
         .size(getOrderSize(balance, orderCode, maxRepetitions))
         .baseRates(baseRates)
         .stepRates(stepRates)
