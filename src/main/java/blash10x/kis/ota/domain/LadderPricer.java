@@ -17,10 +17,16 @@ import java.util.Set;
 public final class LadderPricer {
 
   /**
-   * rate 자체의 상한. 가격제한폭 적용 종목에서는 상/하한가 가드가 항상 먼저 걸리므로 발동하지 않는 백스톱이다.
+   * 실효 등락률(실제 주문가의 현재가 대비)의 상한. 상/하한가 가드와 별개로 반드시 필요하다.
+   *
+   * <p>상/하한가(stck_mxpr/stck_llam)는 오늘 기준가(전일 종가) 기준인데, 예약주문은 익영업일에 실행되고 그날의
+   * 가격제한폭은 오늘 종가 기준이다. 종목이 당일 급락하면 stck_mxpr 이 익영업일 실제 상한보다 높아져, 그 사이의
+   * 주문이 로컬 가드를 통과하고도 KIS 에서 거부된다. 장 마감 후 현재가 = 오늘 종가이므로 이 상한이 익영업일
+   * 제한폭을 대신한다. 명목 rate 가 아니라 실효 등락률에 걸어야 한다 — 손익분기가 앵커에서는 명목 rate 가 작아도
+   * 실효 등락률이 30% 를 넘을 수 있다.
    *
    * <p>KIS 문서상 정리매매종목·ELW·신주인수권은 가격제한폭이 적용되지 않는다(주식예약주문 유의사항). 그런 종목에서
-   * stck_mxpr/stck_llam 이 어떤 값으로 오는지는 확인하지 못했으므로, 상/하한가 가드를 신뢰할 수 없는 경우를 대비해 남겨 둔다.
+   * stck_mxpr/stck_llam 이 어떤 값으로 오는지는 확인하지 못했으므로, 상/하한가 가드의 백스톱 역할도 겸한다.
    */
   private static final double RATE_CAP = 29.985;
 
@@ -67,12 +73,18 @@ public final class LadderPricer {
         }
       }
 
-      if (rate > RATE_CAP) {
-        break;
-      }
-
       double unitPrice = anchor * (100 + direction * rate) / 100;
       int tickPrice = TickSize.round(unitPrice, input.marketName(), orderCode);
+
+      // 실효 등락률: 실제 주문가의 현재가 대비 등락률이다(LadderOrder 계약). 손실 종목은 기준점이 손익분기가라
+      // 주문가가 현재가에서 크게 벌어지는데, 명목 rate 가 아니라 이 실제 값으로 상한을 걸고 기록해야 주문가와
+      // 어긋나지 않는다. 매도는 양수, 매수는 음수가 된다.
+      double actualRate = (tickPrice - input.realtimePrice()) * 100.0 / input.realtimePrice();
+
+      // 사다리는 현재가에서 멀어지는 방향으로 단조라, 한 단이 상한을 넘으면 이후도 전부 넘는다.
+      if (Math.abs(actualRate) > RATE_CAP) {
+        break;
+      }
 
       // 매도는 i 가 커질수록 주문가가 오르고 매수는 내리므로, 한쪽을 벗어나면 이후도 전부 벗어난다.
       if (tickPrice > input.upperPriceLimit() || tickPrice < input.lowerPriceLimit()) {
@@ -84,10 +96,6 @@ public final class LadderPricer {
         continue;
       }
 
-      // rate 는 실제 주문가의 현재가 대비 등락률이다(LadderOrder 계약). 손실 종목은 기준점이 손익분기가라
-      // 주문가가 현재가에서 크게 벌어지는데, 명목 rate 가 아니라 이 실제 값을 담아야 로그·후속 처리가
-      // 주문가와 어긋나지 않는다. 매도는 양수, 매수는 음수가 된다.
-      double actualRate = (tickPrice - input.realtimePrice()) * 100.0 / input.realtimePrice();
       orders.add(new LadderOrder(tickPrice, actualRate));
     }
     return orders;

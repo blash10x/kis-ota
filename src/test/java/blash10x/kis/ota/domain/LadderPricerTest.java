@@ -108,6 +108,33 @@ class LadderPricerTest {
   }
 
   @Test
+  @DisplayName("실효 등락률이 가격제한폭(약 30%)을 넘는 단은 상한가 가드와 무관하게 잘린다")
+  void capsActualRateAtDailyPriceLimit() {
+    // 000660 SK하이닉스가 당일 급락한 실제 사례. 상한가(stck_mxpr)는 어제 종가 기준 2,754,000 으로 낡아 있지만,
+    // 예약주문의 익영업일 제한폭은 오늘 종가(1,842,000) 기준 +30% = 2,394,600 이다. 손익분기가(2,198,114.7) 앵커라
+    // 명목 rate 는 작아도 실효 등락률이 30% 를 넘는 단이 생기는데, 그 단부터 KIS 가 거부하므로 내지 않아야 한다.
+    List<LadderOrder> orders = ladderPricer.price(LadderInput.builder()
+        .orderCode(OrderCode.SELL)
+        .marketName(MarketName.KOSPI200)
+        .realtimePrice(1_842_000)
+        .upperPriceLimit(2_754_000)
+        .lowerPriceLimit(1_486_000)
+        .dayOverDayRate(-11.4)
+        .yearBeta(1.75)
+        .purchaseAvgPrice(2_176_351.19)
+        .size(20)
+        .baseRates(BASE_RATES)
+        .stepRates(STEP_RATES)
+        .build());
+
+    // 실계좌 로그에서 5단(2,401,000, +30.35%)부터 제한폭 초과였다. 4단까지만 살아남는다.
+    assertThat(orders).extracting(LadderOrder::unitPrice)
+        .containsExactly(2_199_000, 2_249_000, 2_300_000, 2_350_000);
+    assertThat(orders).extracting(LadderOrder::rate).allSatisfy(
+        rate -> assertThat(rate).isLessThanOrEqualTo(29.985));
+  }
+
+  @Test
   @DisplayName("하락일 보정은 손익분기가 사다리에는 붙지 않는다")
   void downDayBumpDoesNotMoveBreakEvenLadder() {
     // 하락일 보정은 눌린 현재가 기준의 사다리를 밀어 올리는 장치다. 손익분기가 기준 사다리에 붙이면
