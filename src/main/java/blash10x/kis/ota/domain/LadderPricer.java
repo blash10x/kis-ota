@@ -67,7 +67,9 @@ public final class LadderPricer {
         // 빼는데, 그 보정은 눌린 현재가 기준의 사다리를 밀어 올리는 장치라 현재가와 무관한 기준점에서는 의미가 없다.
         rate = (i - 1) * weight * input.stepRate();
       } else {
-        rate = input.baseRate() + i * weight * input.stepRate();
+        // base 에도 weight 를 곱한다: 시장별 사다리 템플릿(base + i*step)을 종목 베타로 통째로 스케일해,
+        // 고베타일수록 시작 깊이와 간격이 함께 벌어진다. weight 하한이 1.0 이라 설정 base 가 곧 최소 시작 깊이다.
+        rate = weight * (input.baseRate() + i * input.stepRate());
         if (sell && input.dayOverDayRate() < 0.0) {
           rate += Math.abs(input.dayOverDayRate()) * 0.20;
         }

@@ -44,7 +44,7 @@ class LadderPricerTest {
 
   /**
    * 평단(10,000)보다 현재가(70,000)가 한참 위인 수익 종목. 기준점이 현재가라 주문가는 현재가에서
-   * rate = baseRate + i*weight*stepRate 만큼 벌어진다. 5단 주문가는 73,700 / 75,100 / 76,600 / 78,000 / 79,400.
+   * rate = weight*(baseRate + i*stepRate) 만큼 벌어진다. 5단 주문가는 75,300 / 76,700 / 78,100 / 79,500 / 81,000.
    */
   private static LadderInput.LadderInputBuilder climbingKospi() {
     return LadderInput.builder()
@@ -158,12 +158,12 @@ class LadderPricerTest {
     // 상한가가 넉넉하면 5단 전부 나간다.
     assertThat(ladderPricer.price(climbingKospi().build()))
         .extracting(LadderOrder::unitPrice)
-        .containsExactly(73_700, 75_100, 76_600, 78_000, 79_400);
+        .containsExactly(75_300, 76_700, 78_100, 79_500, 81_000);
 
-    // 상한가를 3단(76,600)과 4단(78,000) 사이에 걸면 3건만 남는다.
+    // 상한가를 2단(76,700)과 3단(78,100) 사이에 걸면 2건만 남는다.
     assertThat(ladderPricer.price(climbingKospi().upperPriceLimit(77_000).build()))
         .extracting(LadderOrder::unitPrice)
-        .containsExactly(73_700, 75_100, 76_600);
+        .containsExactly(75_300, 76_700);
   }
 
   @Test
@@ -191,15 +191,15 @@ class LadderPricerTest {
   }
 
   @Test
-  @DisplayName("주입된 가중치로 사다리 간격을 계산한다")
+  @DisplayName("주입된 가중치로 사다리 시작 깊이와 간격을 함께 스케일한다")
   void usesInjectedWeight() {
-    // 한 단만 보면 주문가 = 현재가 * (1 + (baseRate + i*weight*stepRate)/100) 이 그대로 드러난다.
+    // 한 단만 보면 주문가 = 현재가 * (1 + weight*(baseRate + i*stepRate)/100) 이 그대로 드러난다.
     LadderInput input = climbingKospi().size(1).build();
 
-    // 가중치 1.0: rate = 3.20 + 1*1.0*1.20 = 4.40 → 70,000*1.044 = 73,080 → 호가단위 올림 73,100
+    // 가중치 1.0: rate = 1.0*(3.20 + 1*1.20) = 4.40 → 70,000*1.044 = 73,080 → 호가단위 올림 73,100
     assertThat(new LadderPricer(in -> 1.0).price(input).getFirst().unitPrice()).isEqualTo(73_100);
-    // 가중치 2.0: rate = 3.20 + 1*2.0*1.20 = 5.60 → 70,000*1.056 = 73,920 → 호가단위 올림 74,000
-    assertThat(new LadderPricer(in -> 2.0).price(input).getFirst().unitPrice()).isEqualTo(74_000);
+    // 가중치 2.0: rate = 2.0*(3.20 + 1*1.20) = 8.80 → 70,000*1.088 = 76,160 → 호가단위 올림 76,200
+    assertThat(new LadderPricer(in -> 2.0).price(input).getFirst().unitPrice()).isEqualTo(76_200);
   }
 
   @Test
