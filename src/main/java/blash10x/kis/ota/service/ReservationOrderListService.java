@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.core.util.JsonNodes;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -28,10 +29,10 @@ public class ReservationOrderListService {
   private static final Set<String> TR_CONT_HAS_NEXT = Set.of("F", "M"); // 다음 페이지 존재
   private static final int MAX_PAGES = 50; // 1회 20건 * 50 = 기간예약주문 계좌당 최대 1,000건
 
-  private final KisClient kisClient;
+  private final TradingService tradingService;
 
-  public ReservationOrderListService(KisClient kisClient) {
-    this.kisClient = kisClient;
+  public ReservationOrderListService(TradingService tradingService) {
+    this.tradingService = tradingService;
   }
 
   /** 1회 조회 시 최대 20건만 응답하므로, tr_cont 헤더와 CTX_AREA_FK200/NK200으로 연속조회하여 모두 수집한다. */
@@ -49,11 +50,11 @@ public class ReservationOrderListService {
     String nk200 = "";
 
     for (int page = 1; page <= MAX_PAGES; page++) {
-      MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
+      MultiValueMap<String, String> headers = tradingService.buildRequestHeaders(TR_ID);
       headers.set(TR_CONT, trCont);
       MultiValueMap<String, String> queryParams = buildRequestParams(date, date, fk200, nk200);
       ResponseEntity<JsonNode> responseEntity =
-          kisClient.getEntity(PATH, headers, queryParams, JsonNode.class).block();
+          tradingService.getEntity(PATH, headers, queryParams, JsonNode.class).block();
 
       JsonNode body = responseEntity != null ? responseEntity.getBody() : null;
       if (body == null || !body.isObject()) {
@@ -81,7 +82,7 @@ public class ReservationOrderListService {
       trCont = TR_CONT_NEXT;
       fk200 = getText(body, "ctx_area_fk200");
       nk200 = getText(body, "ctx_area_nk200");
-      kisClient.sleep(100); // 20 transactions per second per account
+      tradingService.sleep(100); // 20 transactions per second per account
     }
 
     if (result == null) {
@@ -100,8 +101,8 @@ public class ReservationOrderListService {
   private MultiValueMap<String, String> buildRequestParams(
       String startDate, String endDate, String fk200, String nk200) {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-    queryParams.add("CANO", kisClient.getAccountNo());
-    queryParams.add("ACNT_PRDT_CD", kisClient.getAccountProductCode());
+    queryParams.add("CANO", tradingService.getAccountNo());
+    queryParams.add("ACNT_PRDT_CD", tradingService.getAccountProductCode());
 
     queryParams.add("RSVN_ORD_ORD_DT", startDate);
     queryParams.add("RSVN_ORD_END_DT", endDate);

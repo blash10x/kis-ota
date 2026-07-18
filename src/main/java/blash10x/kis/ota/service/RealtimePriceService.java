@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.model.MarketCode;
 import blash10x.kis.ota.model.ProductPrice;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,10 +20,10 @@ public class RealtimePriceService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/inquire-price";
   private static final String TR_ID = "FHKST01010100";
 
-  private final KisClient kisClient;
+  private final TradingService tradingService;
 
-  public RealtimePriceService(KisClient kisClient) {
-    this.kisClient = kisClient;
+  public RealtimePriceService(TradingService tradingService) {
+    this.tradingService = tradingService;
   }
 
   public List<ProductPrice> inquirePrices(MarketCode marketDivisionCode, List<String> productNos) {
@@ -32,9 +33,9 @@ public class RealtimePriceService {
   }
 
   public ProductPrice inquirePrice(MarketCode marketDivisionCode, String productNo) {
-    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = tradingService.buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams(marketDivisionCode, productNo);
-    Response response = kisClient.get(PATH, headers, queryParams, Response.class).block();
+    Response response = tradingService.get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : null;
   }
 

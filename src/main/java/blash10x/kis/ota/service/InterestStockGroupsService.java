@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.model.InterestStockGroup;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -18,16 +19,16 @@ public class InterestStockGroupsService {
   private static final String PATH = "/uapi/domestic-stock/v1/quotations/intstock-grouplist";
   private static final String TR_ID = "HHKCM113004C7";
 
-  private final KisClient kisClient;
+  private final TradingService tradingService;
 
-  public InterestStockGroupsService(KisClient kisClient) {
-    this.kisClient = kisClient;
+  public InterestStockGroupsService(TradingService tradingService) {
+    this.tradingService = tradingService;
   }
 
   public List<InterestStockGroup> inquireInterestStockGroups() {
-    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = tradingService.buildRequestHeaders(TR_ID);
     MultiValueMap<String, String> queryParams = buildRequestParams();
-    Response response = kisClient.get(PATH, headers, queryParams, Response.class).block();
+    Response response = tradingService.get(PATH, headers, queryParams, Response.class).block();
     return response != null ? response.output : List.of();
   }
 
@@ -35,7 +36,7 @@ public class InterestStockGroupsService {
     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
     queryParams.add("TYPE", "1");
     queryParams.add("FID_ETC_CLS_CODE", "00");
-    queryParams.add("USER_ID", kisClient.getKisProperties().getUserId());
+    queryParams.add("USER_ID", tradingService.getKisProperties().getUserId());
     return queryParams;
   }
 

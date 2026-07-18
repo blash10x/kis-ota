@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.OrderResult;
@@ -24,13 +25,13 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
   private static final String EXCG_ID_DVSN_CD = "SOR"; // 거래소ID구분코드: SOR: Smart Order Routing
 
   public CashOrderService(
-      KisClient kisClient,
+      TradingService tradingService,
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight) {
-    super(kisClient, balanceService, realtimePriceService,
+    super(tradingService, balanceService, realtimePriceService,
         interestStocksService, extractionService, ladderWeight);
   }
 
@@ -39,15 +40,15 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
   protected OrderResult submit(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
     if (!real) {
-      kisClient.sleep(MOCK_ORDER_INTERVAL_MILLIS);
+      tradingService.sleep(MOCK_ORDER_INTERVAL_MILLIS);
       return new OrderResult(null, "Mock", null);
     }
 
     String trId = OrderCode.SELL == orderCode ? TR_ID_SELL : TR_ID_BUY;
-    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(trId);
+    MultiValueMap<String, String> headers = tradingService.buildRequestHeaders(trId);
     Request request = buildRequest(productNo, "" + orderUnitPrice);
-    Response response = kisClient.post(PATH, headers, null, request, Response.class).block();
-    kisClient.sleep(ORDER_INTERVAL_MILLIS);
+    Response response = tradingService.post(PATH, headers, null, request, Response.class).block();
+    tradingService.sleep(ORDER_INTERVAL_MILLIS);
     if (response == null) {
       return new OrderResult(null, "Unknown", null);
     }
@@ -62,8 +63,8 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
 
   private Request buildRequest(String productNo, String orderUnitPrice) {
     return Request.builder()
-        .accountNo(kisClient.getAccountNo())
-        .accountProductCode(kisClient.getAccountProductCode())
+        .accountNo(tradingService.getAccountNo())
+        .accountProductCode(tradingService.getAccountProductCode())
         .productNo(productNo)
         .orderDivision(ORD_DVSN)
         .orderQuantity(ORD_QTY)

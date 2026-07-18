@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
 import blash10x.kis.ota.domain.LadderInput;
 import blash10x.kis.ota.domain.LadderOrder;
@@ -35,7 +36,7 @@ abstract class LadderOrderService<T> {
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
   /** 주문 전송에 쓰는 KIS 클라이언트. 하위 서비스의 {@link #submit} 이 사용한다. */
-  protected final KisClient kisClient;
+  protected final TradingService tradingService;
   // 활성 가중치 알고리즘은 전역 설정으로 고른다(LadderWeightConfig). 사다리 로그에 가중치를 찍어야 해 파이서와 함께 들고 있다.
   private final LadderWeight ladderWeight;
   private final LadderPricer ladderPricer;
@@ -46,13 +47,13 @@ abstract class LadderOrderService<T> {
   private final ExtractionService extractionService;
 
   protected LadderOrderService(
-      KisClient kisClient,
+      TradingService tradingService,
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight) {
-    this.kisClient = kisClient;
+    this.tradingService = tradingService;
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
     this.interestStocksService = interestStocksService;

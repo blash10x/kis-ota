@@ -1,5 +1,6 @@
 package blash10x.kis.ota.service;
 
+import blash10x.kis.ota.external.TradingService;
 import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.ReservationOrderSeq;
@@ -23,13 +24,13 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
   private static final String ORD_OBJT_CBLC_DVSN_CD = "10"; // 현금
 
   public ReservationOrderService(
-      KisClient kisClient,
+      TradingService tradingService,
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight) {
-    super(kisClient, balanceService, realtimePriceService,
+    super(tradingService, balanceService, realtimePriceService,
         interestStocksService, extractionService, ladderWeight);
   }
 
@@ -37,14 +38,14 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
   protected ReservationOrderSeq submit(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real) {
     if (!real) {
-      kisClient.sleep(MOCK_ORDER_INTERVAL_MILLIS);
+      tradingService.sleep(MOCK_ORDER_INTERVAL_MILLIS);
       return new ReservationOrderSeq("Mock");
     }
 
-    MultiValueMap<String, String> headers = kisClient.buildRequestHeaders(TR_ID);
+    MultiValueMap<String, String> headers = tradingService.buildRequestHeaders(TR_ID);
     Request request = buildRequest(productNo, "" + orderUnitPrice, orderCode);
-    Response response = kisClient.post(PATH, headers, null, request, Response.class).block();
-    kisClient.sleep(ORDER_INTERVAL_MILLIS);
+    Response response = tradingService.post(PATH, headers, null, request, Response.class).block();
+    tradingService.sleep(ORDER_INTERVAL_MILLIS);
     if (response == null) {
       return new ReservationOrderSeq("Unknown");
     }
@@ -60,8 +61,8 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
   private Request buildRequest(
       String productNo, String orderUnitPrice, OrderCode orderCode) {
     return Request.builder()
-        .accountNo(kisClient.getAccountNo())
-        .accountProductCode(kisClient.getAccountProductCode())
+        .accountNo(tradingService.getAccountNo())
+        .accountProductCode(tradingService.getAccountProductCode())
         .productNo(productNo)
         .orderUnitPrice(orderUnitPrice)
         .sellBuyDivisionCode(orderCode.getCode())
