@@ -1,6 +1,7 @@
 package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
+import blash10x.kis.ota.domain.LadderWeight;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.ReservationOrderSeq;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,9 +29,10 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
-      ExtractionService extractionService) {
+      ExtractionService extractionService,
+      LadderWeight ladderWeight) {
     super(kisProperties, kisAuthService, balanceService, realtimePriceService,
-        interestStocksService, extractionService);
+        interestStocksService, extractionService, ladderWeight);
   }
 
   @Override

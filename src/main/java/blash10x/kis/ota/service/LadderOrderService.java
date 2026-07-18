@@ -2,7 +2,6 @@ package blash10x.kis.ota.service;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.controller.dto.CreateOrderRequest;
-import blash10x.kis.ota.domain.BetaWeight;
 import blash10x.kis.ota.domain.LadderInput;
 import blash10x.kis.ota.domain.LadderOrder;
 import blash10x.kis.ota.domain.LadderPricer;
@@ -36,9 +35,9 @@ abstract class LadderOrderService<T> extends TradingService {
   protected static final long MOCK_ORDER_INTERVAL_MILLIS = 100;
 
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  // TODO: 가중치 알고리즘을 전역 설정으로 선택하게 되면 주입으로 올린다. 지금은 베타로 고정.
-  private final LadderWeight ladderWeight = new BetaWeight();
-  private final LadderPricer ladderPricer = new LadderPricer(ladderWeight);
+  // 활성 가중치 알고리즘은 전역 설정으로 고른다(LadderWeightConfig). 사다리 로그에 가중치를 찍어야 해 파이서와 함께 들고 있다.
+  private final LadderWeight ladderWeight;
+  private final LadderPricer ladderPricer;
 
   private final BalanceService balanceService;
   private final RealtimePriceService realtimePriceService;
@@ -51,12 +50,15 @@ abstract class LadderOrderService<T> extends TradingService {
       BalanceService balanceService,
       RealtimePriceService realtimePriceService,
       InterestStocksService interestStocksService,
-      ExtractionService extractionService) {
+      ExtractionService extractionService,
+      LadderWeight ladderWeight) {
     super(kisProperties, kisAuthService);
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
     this.interestStocksService = interestStocksService;
     this.extractionService = extractionService;
+    this.ladderWeight = ladderWeight;
+    this.ladderPricer = new LadderPricer(ladderWeight);
   }
 
   /** 주문 1건을 전송한다. real 이 false 면 전송하지 않는다. */
@@ -140,6 +142,7 @@ abstract class LadderOrderService<T> extends TradingService {
         .yearBeta(_beta)
         .yearHigh(metrics.yearHigh())
         .yearLow(metrics.yearLow())
+        .standardPrice(Double.parseDouble(productPrice.standardPrice()))
         .purchaseAvgPrice(parseOrZero(balance, Balance::purchaseAvgPrice))
         // 매도에서만 읽는 값이다. 매수에서도 파싱하면 KIS 가 빈 값을 줬을 때 낼 이유가 없는 예외를 낸다.
         .evaluationProfitLossRatio(OrderCode.SELL == orderCode

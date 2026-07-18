@@ -14,4 +14,6 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class OtaProperties {
   private Map<MarketName, String> extractionUrls;
+  /** 사다리 가중치 알고리즘. 설정이 없으면 기존과 동일하게 베타를 쓴다. */
+  private LadderWeightType ladderWeight = LadderWeightType.BETA;
 }
