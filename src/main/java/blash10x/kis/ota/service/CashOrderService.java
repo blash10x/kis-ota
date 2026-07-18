@@ -32,9 +32,11 @@ public class CashOrderService extends LadderOrderService<OrderResult> {
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight,
-      OtaProperties otaProperties) {
+      OtaProperties otaProperties,
+      PurchasableCashService purchasableCashService) {
     super(tradingService, balanceService, realtimePriceService,
-        interestStocksService, extractionService, ladderWeight, otaProperties);
+        interestStocksService, extractionService, ladderWeight, otaProperties,
+        purchasableCashService);
   }
 
   // TODO: TBD

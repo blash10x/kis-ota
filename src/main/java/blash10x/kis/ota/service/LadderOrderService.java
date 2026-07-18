@@ -47,6 +47,7 @@ abstract class LadderOrderService<T> {
   private final InterestStocksService interestStocksService;
   private final ExtractionService extractionService;
   private final OtaProperties otaProperties;
+  private final PurchasableCashService purchasableCashService;
 
   protected LadderOrderService(
       TradingService tradingService,
@@ -55,7 +56,8 @@ abstract class LadderOrderService<T> {
       InterestStocksService interestStocksService,
       ExtractionService extractionService,
       LadderWeight ladderWeight,
-      OtaProperties otaProperties) {
+      OtaProperties otaProperties,
+      PurchasableCashService purchasableCashService) {
     this.tradingService = tradingService;
     this.balanceService = balanceService;
     this.realtimePriceService = realtimePriceService;
@@ -64,6 +66,7 @@ abstract class LadderOrderService<T> {
     this.ladderWeight = ladderWeight;
     this.ladderPricer = new LadderPricer(ladderWeight);
     this.otaProperties = otaProperties;
+    this.purchasableCashService = purchasableCashService;
   }
 
   /** 주문 1건을 전송한다. real 이 false 면 전송하지 않는다. */
@@ -109,11 +112,21 @@ abstract class LadderOrderService<T> {
     }
     logger.info("orderProductNos={}", orderProductNos);
 
+    // 매수 예산: 미수(외상) 매수를 막는 가드. 예약주문도 익영업일에 현금주문으로 전환되므로 같은 예산을 적용한다.
+    // 조회에 실패하면 여기서 예외로 멈춘다(fail-closed) — 예산을 모른 채 매수를 내는 것이 곧 미수 위험이다.
+    // dry-run(Mock)에도 같은 차감을 적용해, 예산상 몇 단까지 나가는지 실주문 없이 미리 볼 수 있게 한다.
+    CashBudget budget = OrderCode.BUY == orderCode && !orderProductNos.isEmpty()
+        ? CashBudget.of(purchasableCashService.inquireNoCreditBuyAmount(orderProductNos.getFirst()))
+        : CashBudget.unlimited();
+    if (OrderCode.BUY == orderCode) {
+      logger.info("noCreditBuyAmount={}", String.format("%,d", budget.remaining()));
+    }
+
     // 한 종목이 실패해도 나머지는 진행하고, 이미 전송한 주문은 결과에 남긴다.
     List<T> results = new ArrayList<>();
     for (String productNo : orderProductNos) {
       try {
-        orderProduct(productNo, request, balances, interestStocks, results);
+        orderProduct(productNo, request, balances, interestStocks, budget, results);
       } catch (RuntimeException e) {
         logger.warn("{} skipped", productNo, e);
       }
@@ -132,6 +145,7 @@ abstract class LadderOrderService<T> {
       CreateOrderRequest request,
       Map<String, Balance> balances,
       Map<String, InterestStock> interestStocks,
+      CashBudget budget,
       List<T> results) {
     OrderCode orderCode = request.orderCode();
     Map<OrderCode, Integer> maxRepetitions = otaProperties.getMaxRepetitions();
@@ -173,6 +187,13 @@ abstract class LadderOrderService<T> {
     int orderCount = 0;
     for (LadderOrder order : orders) {
       orderCount++;
+      // 예산 부족 단은 건너뛴다(skip). 매수 사다리는 아래로 갈수록 싸져, 다음 단은 남은 예산에 들어갈 수 있다.
+      if (!budget.tryReserve(order.unitPrice())) {
+        logger.info("{} | {} | skipped by budget: price={}, remaining={}",
+            String.format("%2d", orderCount), productNo,
+            String.format("%,d", order.unitPrice()), String.format("%,d", budget.remaining()));
+        continue;
+      }
       logger.info(
           "{} | {} | {} ({}) | {} ({}:{}) | {} | {} | {} | {}",
           String.format("%2d", orderCount),
