@@ -19,8 +19,14 @@ public final class RangeWeight implements LadderWeight {
   /** log(r + C) 가 r=MEDIAN_RATIO 에서 0 이 되도록: C = 1 - MEDIAN_RATIO. */
   private static final double C = 1.0 - MEDIAN_RATIO;
 
-  /** 손실 회피 가드가 기대는 1-스케일을 벗어나지 않도록, 극단 종목의 가중치를 이 범위로 가둔다. */
-  private static final double MIN_WEIGHT = 0.5;
+  /**
+   * 가중치 하한. {@link BetaWeight} 와 같은 1.0 으로, 저변동폭 종목도 설정 요율(stepRate) 자체가 최소 단 간격으로
+   * 보장된다. 중앙값(MEDIAN_RATIO) 아래의 종목은 전부 이 하한에 눌려 1.0 이 된다 — 변동폭 차이는 중앙값 위에서만
+   * 간격에 반영된다.
+   */
+  private static final double MIN_WEIGHT = 1.0;
+
+  /** 사다리 간격 정규화가 기대는 1-스케일 상한. */
   private static final double MAX_WEIGHT = 2.5;
 
   @Override

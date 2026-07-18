@@ -40,30 +40,30 @@ class RangeWeightTest {
   }
 
   @Test
-  @DisplayName("449450 실제 값(변동폭 77%)은 중앙보다 낮아 0.87 근처가 된다")
+  @DisplayName("449450 실제 값(변동폭 77%)은 중앙보다 낮아 하한 1.0 에 눌린다")
   void weightForRealEtf() {
-    // (87,946 - 46,061) / 54,240 = 0.7722 → log(0.7722+0.11)+1 = 0.8747
+    // (87,946 - 46,061) / 54,240 = 0.7722 → raw log(0.7722+0.11)+1 = 0.8747 → 하한 1.0
     LadderInput input = base().yearHigh(87_946).yearLow(46_061).standardPrice(54_240).build();
-    assertThat(rangeWeight.of(input)).isCloseTo(0.8747, within(0.001));
+    assertThat(rangeWeight.of(input)).isEqualTo(1.0);
   }
 
   @Test
-  @DisplayName("변동성이 커질수록 가중치가 커진다")
+  @DisplayName("중앙값 위에서는 변동성이 커질수록 가중치가 커진다")
   void weightIncreasesWithVolatility() {
-    // clamp 에 걸리지 않는 중간 구간(r=0.60, 1.20)에서 단조 증가를 본다.
-    double low = rangeWeight.of(base().yearHigh(160).yearLow(100).standardPrice(100).build());
+    // 하한(중앙값 아래)·상한에 걸리지 않는 구간(r=1.00, 1.20)에서 단조 증가를 본다.
+    double low = rangeWeight.of(base().yearHigh(200).yearLow(100).standardPrice(100).build());
     double high = rangeWeight.of(base().yearHigh(220).yearLow(100).standardPrice(100).build());
-    assertThat(low).isCloseTo(0.6575, within(0.001));
+    assertThat(low).isCloseTo(1.1044, within(0.001));
     assertThat(high).isCloseTo(1.2700, within(0.001));
     assertThat(high).isGreaterThan(low);
   }
 
   @Test
-  @DisplayName("극단값은 사다리 간격 정규화가 기대는 1-스케일(0.5~2.5)로 가둔다")
+  @DisplayName("극단값은 사다리 간격 정규화가 기대는 1-스케일(1.0~2.5)로 가둔다")
   void clampsToOneScale() {
-    // r=0.1 → raw 0.489 → 하한 0.5 로 올린다
+    // r=0.1 → raw 0.489 → 하한 1.0 으로 올린다. 저변동폭 종목의 최소 단 간격(설정 요율) 보장이다.
     assertThat(rangeWeight.of(base().yearHigh(110).yearLow(100).standardPrice(100).build()))
-        .isEqualTo(0.5);
+        .isEqualTo(1.0);
     // r 이 아무리 커도 상한 2.5 를 넘지 않는다
     assertThat(rangeWeight.of(base().yearHigh(1_000_000).yearLow(1).standardPrice(100).build()))
         .isEqualTo(2.5);
