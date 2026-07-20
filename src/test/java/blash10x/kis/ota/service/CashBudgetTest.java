@@ -43,6 +43,25 @@ class CashBudgetTest {
   }
 
   @Test
+  @DisplayName("전송 실패한 단의 예약을 되돌리면 다음 단이 그 예산을 쓸 수 있다")
+  void releaseReturnsReservedAmount() {
+    CashBudget budget = CashBudget.of(100_000);
+
+    assertThat(budget.tryReserve(60_000)).isTrue();
+    budget.release(60_000);
+    assertThat(budget.remaining()).isEqualTo(100_000);
+    assertThat(budget.tryReserve(100_000)).isTrue();
+  }
+
+  @Test
+  @DisplayName("무제한 예산은 release 해도 오버플로 없이 무제한을 유지한다")
+  void unlimitedReleaseKeepsUnlimited() {
+    CashBudget budget = CashBudget.unlimited();
+    budget.release(Integer.MAX_VALUE);
+    assertThat(budget.tryReserve(Integer.MAX_VALUE)).isTrue();
+  }
+
+  @Test
   @DisplayName("음수 조회값은 0 예산으로 본다")
   void negativeAmountBecomesZero() {
     CashBudget budget = CashBudget.of(-1);

@@ -35,6 +35,15 @@ public final class CashBudget {
     return true;
   }
 
+  /** 전송에 실패한 단의 예약을 되돌린다. {@link #tryReserve} 로 차감했던 금액만 넘겨야 한다. */
+  public void release(long price) {
+    // 무제한 예산(매도)은 차감분이 의미가 없고, 더하면 오버플로가 난다.
+    if (remaining > Long.MAX_VALUE - price) {
+      return;
+    }
+    remaining += price;
+  }
+
   public long remaining() {
     return remaining;
   }

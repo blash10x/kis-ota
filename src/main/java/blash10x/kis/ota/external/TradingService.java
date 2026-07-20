@@ -2,6 +2,7 @@ package blash10x.kis.ota.external;
 
 import blash10x.kis.ota.config.KisProperties;
 import blash10x.kis.ota.core.external.ExternalService;
+import blash10x.kis.ota.core.service.ServiceException;
 import blash10x.kis.ota.core.util.JsonNodes;
 import blash10x.kis.ota.model.AccessToken;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -79,8 +80,9 @@ public class TradingService {
   }
 
   /**
-   * POST 는 재시도하지 않는다. 주문 API 는 멱등하지 않아서, KIS 에 접수된 뒤 응답 단계에서 실패한 요청을
-   * 재전송하면 같은 주문이 중복 체결된다. 실패는 호출자에게 그대로 전파되어 해당 종목만 건너뛴다.
+   * POST 는 원칙적으로 재시도하지 않는다. 주문 API 는 멱등하지 않아서, KIS 에 접수된 뒤 응답 단계에서 실패한
+   * 요청을 재전송하면 같은 주문이 중복 체결된다. 유일한 예외가 {@link #isRateLimitRejected 초당 한도 초과 거절}로,
+   * 미접수가 보장되어 재전송해도 중복이 생길 수 없다. 그 외 실패는 호출자에게 그대로 전파된다.
    */
   public <T> Mono<T> post(
       String path,
@@ -90,12 +92,24 @@ public class TradingService {
       Class<T> responseType) {
     return externalService
         .post(path, headers, queryParams, requestBody, JsonNode.class)
+        .retryWhen(
+            Retry.backoff(2, Duration.ofMillis(500)).filter(TradingService::isRateLimitRejected))
         .mapNotNull(
             responseEntity -> {
               JsonNode jsonNode = responseEntity.getBody();
               LOGGER.debug("{}", jsonNode);
               return JsonNodes.toValue(jsonNode, responseType);
             });
+  }
+
+  /**
+   * EGW00201(초당 거래건수 초과)은 게이트웨이가 요청 자체를 거절한 것이라 원장에 접수되지 않았음이 보장된다.
+   * 클라이언트가 한도(실전 20건/초) 안에서 보내도 KIS 쪽 사정으로 산발적으로 발생한다.
+   */
+  private static boolean isRateLimitRejected(Throwable throwable) {
+    return throwable instanceof ServiceException
+        && throwable.getMessage() != null
+        && throwable.getMessage().contains("EGW00201");
   }
 
   public MultiValueMap<String, String> buildRequestHeaders(String trId) {

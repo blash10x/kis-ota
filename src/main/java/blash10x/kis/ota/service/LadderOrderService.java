@@ -207,7 +207,16 @@ abstract class LadderOrderService<T> {
           String.format("%,6d", realtimePrice),
           String.format("%6.2f", order.rate()),
           String.format("%,6d", order.unitPrice()));
-      T result = submit(productNo, order.unitPrice(), orderCode, real);
+      T result;
+      try {
+        result = submit(productNo, order.unitPrice(), orderCode, real);
+      } catch (RuntimeException e) {
+        // 단 단위 격리: 한 단의 전송 실패가 같은 종목의 남은 단까지 버리게 두지 않는다.
+        // 미전송 단이 차지했던 예산은 되돌려, 뒤의 단이 그 몫을 쓸 수 있게 한다.
+        budget.release(order.unitPrice());
+        logger.warn("{} | {} | rung skipped", String.format("%2d", orderCount), productNo, e);
+        continue;
+      }
       results.add(result);
     }
   }
