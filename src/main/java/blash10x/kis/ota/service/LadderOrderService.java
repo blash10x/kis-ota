@@ -69,7 +69,12 @@ abstract class LadderOrderService<T> {
     this.purchasableCashService = purchasableCashService;
   }
 
-  /** 주문 1건을 전송한다. real 이 false 면 전송하지 않는다. */
+  /**
+   * 주문 1건을 전송한다. real 이 false 면 전송하지 않는다.
+   *
+   * @return 접수 결과. 업무 거절(rt_cd≠0, 미접수 확정)이면 null — 호출자가 예산을 되돌린다.
+   *     접수 여부를 알 수 없는 실패는 null 이 아닌 마커를 반환해 예산을 소진된 것으로 남긴다(fail-closed).
+   */
   protected abstract T submit(
       String productNo, int orderUnitPrice, OrderCode orderCode, boolean real);
 
@@ -215,6 +220,11 @@ abstract class LadderOrderService<T> {
         // 미전송 단이 차지했던 예산은 되돌려, 뒤의 단이 그 몫을 쓸 수 있게 한다.
         budget.release(order.unitPrice());
         logger.warn("{} | {} | rung skipped", String.format("%2d", orderCount), productNo, e);
+        continue;
+      }
+      if (result == null) {
+        // 업무 거절은 미접수가 확정이므로 예산만 되돌린다. 거절 사유는 submit 이 이미 로그로 남겼다.
+        budget.release(order.unitPrice());
         continue;
       }
       results.add(result);

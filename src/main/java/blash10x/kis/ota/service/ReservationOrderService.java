@@ -68,7 +68,7 @@ public class ReservationOrderService extends LadderOrderService<ReservationOrder
     if (!"0".equals(response.rt_cd) || response.output == null) {
       LOGGER.warn("{} order rejected: rt_cd={}, msg_cd={}, msg={}",
           productNo, response.rt_cd, response.msg_cd, response.msg);
-      return new ReservationOrderSeq("");
+      return null;
     }
 
     return response.output;
