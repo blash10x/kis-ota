@@ -14,6 +14,7 @@ import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import blash10x.kis.ota.model.ProductPrice;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,9 +105,11 @@ abstract class LadderOrderService<T> {
     // 매도는 보유 종목, 매수는 관심 종목이 대상이다. productNos 를 비워 보내면 그 전체가 대상이 된다.
     Set<String> candidates =
         OrderCode.SELL == orderCode ? balances.keySet() : interestStocks.keySet();
-    List<String> orderProductNos = productNos.isEmpty()
+    List<String> selectedProductNos = productNos.isEmpty()
         ? candidates.stream().toList()
         : productNos.stream().filter(candidates::contains).toList();
+
+    List<String> orderProductNos = sortByProfitRate(selectedProductNos, orderCode, balances);
 
     // 지정한 종목이 대상에 없으면 그 종목만 빠진다. 전체로 넓히지 않는다.
     List<String> unknownProductNos =
@@ -229,6 +232,33 @@ abstract class LadderOrderService<T> {
       }
       results.add(result);
     }
+  }
+
+  /**
+   * 처리 순서: 매도는 평가손익율이 높은 종목부터(수익 실현 우선), 매수는 낮은 종목부터(하락 종목 우선).
+   *
+   * <p>매수 예산은 앞 종목부터 소진되므로, 이 정렬이 예산 안에서 어떤 종목이 먼저 체결되는지를 결정한다. 보유하지 않은
+   * 매수 후보는 평가손익율이 없어 0.0 으로 본다. 정렬은 안정 정렬이라 손익율이 같은 종목은 입력 순서를 유지한다.
+   */
+  static List<String> sortByProfitRate(
+      List<String> productNos, OrderCode orderCode, Map<String, Balance> balances) {
+    Comparator<String> byProfitRate =
+        Comparator.comparingDouble(productNo -> profitRate(balances.get(productNo)));
+    return productNos.stream()
+        .sorted(OrderCode.SELL == orderCode ? byProfitRate.reversed() : byProfitRate)
+        .toList();
+  }
+
+  /**
+   * 정렬 키로 쓰는 평가손익율. 미보유(balance 없음)와 값이 빈 응답은 0.0 으로 본다 — 정렬은 주문 루프 초입에서
+   * 한 번에 돌기 때문에, 여기서 예외가 나면 종목 하나가 아니라 사다리 전체가 시작도 못 하고 중단된다.
+   */
+  private static double profitRate(Balance balance) {
+    if (balance == null) {
+      return 0.0;
+    }
+    String rate = balance.evaluationProfitLossRatio();
+    return rate == null || rate.isBlank() ? 0.0 : Double.parseDouble(rate);
   }
 
   /** 보유하지 않은 종목은 balance 가 없다. 매수 후보라도 보유 중이면 balance 가 있다. */
