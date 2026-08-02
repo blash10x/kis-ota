@@ -55,6 +55,17 @@ public record LadderInput(
     if (size < 0) {
       throw new IllegalArgumentException("size must not be negative: " + size);
     }
+    // 수익 종목 매도의 +1% 보장은 첫 단 깊이 weight*(base+step)(weight 하한 1.0)가 손익분기 여유(1%)보다
+    // 깊다는 데 기댄다(LadderPricer 의 기준점 선택 참고). 설정이 이 전제를 깨면 사다리가 조용히 손익분기
+    // 아래에서 시작하므로, 계산 전에 여기서 막는다. 인스턴스 메서드(baseRate())는 필드 대입 전이라 못 쓴다.
+    if (OrderCode.SELL == orderCode) {
+      double firstRungRate =
+          baseRates.get(marketName.rateKey()) + stepRates.get(marketName.rateKey());
+      if (firstRungRate <= 1.0) {
+        throw new IllegalArgumentException(
+            "SELL base+step must exceed the break-even margin 1%: " + firstRungRate);
+      }
+    }
   }
 
   public double baseRate() {

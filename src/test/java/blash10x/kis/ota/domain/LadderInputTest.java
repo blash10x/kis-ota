@@ -51,6 +51,27 @@ class LadderInputTest {
   }
 
   @Test
+  @DisplayName("매도 요율은 base+step 이 손익분기 여유(1%)를 넘어야 한다")
+  void rejectsSellRatesNotExceedingBreakEvenMargin() {
+    // 수익 종목 매도의 +1% 보장은 첫 단 깊이(base+step, weight 하한 1.0)가 1% 를 넘는다는 전제 위에 있다.
+    // 설정이 전제를 깨면 계산 결과가 조용히 손익분기 아래로 내려가므로 입력 시점에 막는다.
+    assertThatThrownBy(() -> valid()
+        .baseRates(Map.of(MarketName.ETF, 0.60))
+        .stepRates(Map.of(MarketName.ETF, 0.40))
+        .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("break-even margin");
+
+    // 매수는 손익분기 개념이 없어 같은 요율도 허용된다.
+    assertThat(valid()
+        .orderCode(OrderCode.BUY)
+        .baseRates(Map.of(MarketName.ETF, 0.60))
+        .stepRates(Map.of(MarketName.ETF, 0.40))
+        .build())
+        .isNotNull();
+  }
+
+  @Test
   @DisplayName("KOSPI 는 KOSPI200 요율로 조회한다")
   void kospiReadsKospi200Rates() {
     LadderInput input = valid()

@@ -43,18 +43,18 @@ public final class LadderPricer {
     double weight = ladderWeight.of(input);
     int direction = sell ? 1 : -1;
 
-    // 사다리를 벌리는 기준점. 손실 종목(현재가 < 손익분기가) 매도는 손익분기가(평단*1.01)를 기준점으로 삼는다.
+    // 사다리를 벌리는 기준점. 손실 종목(현재가 < 평단) 매도는 손익분기가(평단*1.01)를 기준점으로 삼는다.
     // 그러면 모든 단이 손익분기가 위에서 등간격으로 벌어져 손실 회피가 구조적으로 보장되고, 현재가 기준으로
-    // 낮은 단들이 손익분기가로 눌려 한 가격으로 뭉쳤다 중복 제거되며 붕괴하던 문제가 사라진다. 현재가가 이미
-    // 손익분기가 위면(수익 종목) 현재가가 그대로 기준점이라 기존 동작과 같다. 매수는 손익분기 개념이 없다.
+    // 낮은 단들이 손익분기가로 눌려 한 가격으로 뭉쳤다 중복 제거되며 붕괴하던 문제가 사라진다.
+    // 수익 종목은 수익률이 1% 미만이라 손익분기가가 현재가보다 높아도 현재가가 기준점이다 — 손익분기가로
+    // 재앵커하면 첫 단이 현재가에 붙어(추가 수익 ≈ 0) 사실상 현재가 매도가 된다. 수익 종목은 현재가 대비
+    // 추가 수익이 원칙이고, 첫 단 = 현재가*(1 + weight*(base+step)) ≥ 평단*1.01 이라(base+step > 1% 는
+    // LadderInput 이 강제한다) +1% 보장도 그대로 성립한다. 매수는 손익분기 개념이 없다.
     double anchor = input.realtimePrice();
     boolean fromBreakEven = false;
-    if (sell) {
-      double breakEven = input.purchaseAvgPrice() * 1.01;
-      if (breakEven > anchor) {
-        anchor = breakEven;
-        fromBreakEven = true;
-      }
+    if (sell && input.realtimePrice() < input.purchaseAvgPrice()) {
+      anchor = input.purchaseAvgPrice() * 1.01;
+      fromBreakEven = true;
     }
 
     List<LadderOrder> orders = new ArrayList<>();

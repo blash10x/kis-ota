@@ -84,6 +84,40 @@ class LadderPricerTest {
     assertThat(orders).hasSize(15);
   }
 
+  /**
+   * 133690 TIGER 미국나스닥100 실제 사례. 현재가(179,850)가 평단(178,149.57) 위인 수익 종목(+0.95%)이지만
+   * 수익률이 1% 미만이라 손익분기가(179,931.07)는 현재가보다 높다.
+   */
+  private static LadderInput.LadderInputBuilder marginallyProfitableEtf() {
+    return LadderInput.builder()
+        .orderCode(OrderCode.SELL)
+        .marketName(MarketName.ETF)
+        .realtimePrice(179_850)
+        .upperPriceLimit(233_800)
+        .lowerPriceLimit(125_900)
+        .dayOverDayRate(0.0)
+        .yearBeta(1.0)
+        .purchaseAvgPrice(178_149.57)
+        .size(3)
+        .baseRates(BASE_RATES)
+        .stepRates(STEP_RATES);
+  }
+
+  @Test
+  @DisplayName("수익률 1% 미만이어도 수익 종목이면 현재가 기준으로 사다리를 벌린다")
+  void marginallyProfitableSellAnchorsAtCurrentPrice() {
+    // 예전에는 이 구간(평단 ≤ 현재가 < 손익분기가)도 손익분기가로 재앵커해 첫 단이 현재가 +0.05% 에
+    // 붙었다 — 수익 종목은 현재가 대비 추가 수익이 원칙이다.
+    List<LadderOrder> orders = new LadderPricer(in -> 1.0).price(marginallyProfitableEtf().build());
+
+    // 첫 단 = 현재가 * (1 + 1.0*(2.05 + 1*0.55)/100) = 184,526.1 → 호가단위 올림 184,530.
+    // 손익분기가(호가단위 올림 179,935)가 아니다.
+    assertThat(orders.getFirst().unitPrice()).isEqualTo(184_530);
+    // 현재가 앵커여도 모든 단이 손익분기가 위라 +1% 보장은 유지된다.
+    assertThat(orders).extracting(LadderOrder::unitPrice)
+        .allSatisfy(price -> assertThat(price).isGreaterThan(179_935));
+  }
+
   @Test
   @DisplayName("rate 는 실제 주문가의 현재가 대비 등락률과 일치한다")
   void rateReflectsActualOrderPrice() {
@@ -148,6 +182,13 @@ class LadderPricerTest {
     int downFirst =
         ladderPricer.price(climbingKospi().dayOverDayRate(-3.0).build()).getFirst().unitPrice();
     assertThat(downFirst).isGreaterThan(flatFirst);
+
+    // 수익률 1% 미만 수익 종목도 수익 종목이라 보정이 붙는다. 손익분기 재앵커 경로였던 시절에는 안 붙던 구간이다.
+    LadderPricer flatWeight = new LadderPricer(in -> 1.0);
+    int marginalFlat = flatWeight.price(marginallyProfitableEtf().build()).getFirst().unitPrice();
+    int marginalDown = flatWeight.price(marginallyProfitableEtf().dayOverDayRate(-3.0).build())
+        .getFirst().unitPrice();
+    assertThat(marginalDown).isGreaterThan(marginalFlat);
   }
 
   @Test
