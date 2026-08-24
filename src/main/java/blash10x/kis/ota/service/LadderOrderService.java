@@ -123,11 +123,14 @@ abstract class LadderOrderService<T> {
     // 매수 예산: 미수(외상) 매수를 막는 가드. 예약주문도 익영업일에 현금주문으로 전환되므로 같은 예산을 적용한다.
     // 조회에 실패하면 여기서 예외로 멈춘다(fail-closed) — 예산을 모른 채 매수를 내는 것이 곧 미수 위험이다.
     // dry-run(Mock)에도 같은 차감을 적용해, 예산상 몇 단까지 나가는지 실주문 없이 미리 볼 수 있게 한다.
-    CashBudget budget = OrderCode.BUY == orderCode && !orderProductNos.isEmpty()
+    // 예산이 실제로 걸리는 경로에서만 금액을 찍는다 — 무제한 예산의 Long.MAX_VALUE 는 금액으로 읽히면 안 된다.
+    boolean budgeted = OrderCode.BUY == orderCode && !orderProductNos.isEmpty();
+    CashBudget budget = budgeted
         ? CashBudget.of(purchasableCashService.inquireNoCreditBuyAmount(orderProductNos.getFirst()))
         : CashBudget.unlimited();
-    if (OrderCode.BUY == orderCode) {
-      logger.info("noCreditBuyAmount={}", String.format("%,d", budget.remaining()));
+    long initialBudget = budget.remaining();
+    if (budgeted) {
+      logger.info("noCreditBuyAmount={}", String.format("%,d", initialBudget));
     }
 
     // 한 종목이 실패해도 나머지는 진행하고, 이미 전송한 주문은 결과에 남긴다.
@@ -138,6 +141,13 @@ abstract class LadderOrderService<T> {
       } catch (RuntimeException e) {
         logger.warn("{} skipped", productNo, e);
       }
+    }
+
+    // 사다리를 다 내보낸 뒤의 예산. 몇 단이 예산에 막혀 빠졌는지, 다음 주문에 얼마가 남았는지를 한 줄로 남긴다.
+    if (budgeted) {
+      logger.info("budget: used={}, remaining={}",
+          String.format("%,d", initialBudget - budget.remaining()),
+          String.format("%,d", budget.remaining()));
     }
     return results;
   }
