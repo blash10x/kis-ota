@@ -11,8 +11,6 @@ import org.springframework.util.MultiValueMap;
  * 매수가능조회(TTTC8908R). 매수 사다리의 예산으로 쓸 "미수 없는 매수금액"을 조회한다.
  *
  * <p>잔고조회의 예수금과 달리, 이 값은 이미 나가 있는 미체결 매수주문·증거금까지 반영된 공식 가용액이다.
- *
- * @author myungsik.sung@gmail.com
  */
 @Service
 public class PurchasableCashService {

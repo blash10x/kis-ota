@@ -10,9 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 public class InterestStockGroupsService {
   private static final Logger LOGGER = LoggerFactory.getLogger(InterestStockGroupsService.class);

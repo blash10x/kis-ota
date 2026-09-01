@@ -11,8 +11,6 @@ import org.junit.jupiter.api.Test;
 
 /**
  * {@link LadderOrderService#sortByProfitRate} 회귀 테스트.
- *
- * @author myungsik.sung@gmail.com
  */
 class LadderOrderServiceTest {
 

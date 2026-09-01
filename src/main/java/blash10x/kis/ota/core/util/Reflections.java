@@ -2,9 +2,6 @@ package blash10x.kis.ota.core.util;
 
 import java.lang.reflect.Field;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public abstract class Reflections {
 
   private static Field getField(String fieldName, Class<?> type) {

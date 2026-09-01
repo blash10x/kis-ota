@@ -4,9 +4,6 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public enum MarketName {
   KOSPI, KOSPI200, ETF;
 

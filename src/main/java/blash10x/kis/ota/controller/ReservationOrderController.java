@@ -15,9 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Tag(name = "Trading API", description = "API 명세")
 @RestController
 @RequestMapping(value = "/trading", produces = MediaType.APPLICATION_JSON_VALUE)

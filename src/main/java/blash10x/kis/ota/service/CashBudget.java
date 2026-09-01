@@ -5,8 +5,6 @@ package blash10x.kis.ota.service;
  *
  * <p>매수 사다리는 아래로 갈수록 싸지므로, 부족한 단을 건너뛰어도(skip) 더 깊은 싼 단은 남은 예산에 들어갈 수
  * 있다. 한 요청의 여러 종목이 같은 예산을 공유한다.
- *
- * @author myungsik.sung@gmail.com
  */
 public final class CashBudget {
 

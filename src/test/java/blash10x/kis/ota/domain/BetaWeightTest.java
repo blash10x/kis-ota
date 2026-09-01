@@ -11,9 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 class BetaWeightTest {
 
   private final BetaWeight betaWeight = new BetaWeight();

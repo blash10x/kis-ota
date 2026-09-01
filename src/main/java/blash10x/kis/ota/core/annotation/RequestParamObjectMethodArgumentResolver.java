@@ -19,9 +19,6 @@ import org.springframework.web.method.annotation.RequestParamMethodArgumentResol
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public class RequestParamObjectMethodArgumentResolver implements HandlerMethodArgumentResolver {
   private final RequestParamFieldResolver requestParamResolver;
 

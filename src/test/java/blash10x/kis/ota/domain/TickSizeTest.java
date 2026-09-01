@@ -9,9 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 class TickSizeTest {
 
   @ParameterizedTest(name = "{0}원대 호가단위 {1}원")

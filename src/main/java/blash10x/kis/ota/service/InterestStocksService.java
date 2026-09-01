@@ -13,9 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 public class InterestStocksService {
   private static final Logger LOGGER = LoggerFactory.getLogger(InterestStocksService.class);

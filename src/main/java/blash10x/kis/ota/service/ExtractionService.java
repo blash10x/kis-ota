@@ -19,9 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 @Data
 public class ExtractionService {

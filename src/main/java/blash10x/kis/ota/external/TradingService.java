@@ -23,8 +23,6 @@ import reactor.util.retry.Retry;
  *
  * <p>이전에는 이 기능을 추상 베이스에서 상속으로 나눠 썼으나, 잔고 조회처럼 무관한 서비스까지 HTTP 를 물려받고 서비스마다
  * {@link ExternalService}(WebClient)와 토큰 캐시가 따로 생기는 문제가 있어 합성으로 바꿨다. 빈 하나라 WebClient·토큰이 공유된다.
- *
- * @author myungsik.sung@gmail.com
  */
 @Service
 public class TradingService {

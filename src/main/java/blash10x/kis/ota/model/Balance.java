@@ -3,9 +3,6 @@ package blash10x.kis.ota.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public record Balance(
     @Schema(description = "상품번호")
     @JsonProperty("pdno")

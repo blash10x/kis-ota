@@ -10,9 +10,6 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 class LadderInputTest {
 
   private static LadderInput.LadderInputBuilder valid() {
@@ -51,22 +48,35 @@ class LadderInputTest {
   }
 
   @Test
-  @DisplayName("매도 요율은 base+step 이 손익분기 여유(1%)를 넘어야 한다")
-  void rejectsSellRatesNotExceedingBreakEvenMargin() {
-    // 수익 종목 매도의 +1% 보장은 첫 단 깊이(base+step, weight 하한 1.0)가 1% 를 넘는다는 전제 위에 있다.
+  @DisplayName("매도 요율은 base+step 이 손익분기 여유 이상이어야 한다")
+  void rejectsSellRatesNotReachingBreakEvenMargin() {
+    // 수익 종목 매도의 손익분기 보장은 첫 단 깊이(base+step, weight 하한 1.0)가 여유 이상이라는 전제 위에 있다.
     // 설정이 전제를 깨면 계산 결과가 조용히 손익분기 아래로 내려가므로 입력 시점에 막는다.
+    // 경계는 여유에서 파생한다 — 리터럴로 박아 두면 여유를 조정했을 때 경계를 벗어난 채로 통과한다.
+    // (half + half 는 double 에서도 정확히 MARGIN_RATE 다.)
+    double half = BreakEven.MARGIN_RATE / 2;
+
+    // 하한 직전(합 = 여유 - 0.05)은 거부한다.
     assertThatThrownBy(() -> valid()
-        .baseRates(Map.of(MarketName.ETF, 0.60))
-        .stepRates(Map.of(MarketName.ETF, 0.40))
+        .baseRates(Map.of(MarketName.ETF, half - 0.05))
+        .stepRates(Map.of(MarketName.ETF, half))
         .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("break-even margin");
 
-    // 매수는 손익분기 개념이 없어 같은 요율도 허용된다.
+    // 하한 정확히는 허용한다(운영 설정의 ETF 매도 1.25+0.50 이 이 경계에 붙어 있다). 첫 단이 손익분기가와
+    // 같고, 매도는 호가단위 올림이라 그 아래로 내려가지 않는다.
+    assertThat(valid()
+        .baseRates(Map.of(MarketName.ETF, half))
+        .stepRates(Map.of(MarketName.ETF, half))
+        .build())
+        .isNotNull();
+
+    // 매수는 손익분기 개념이 없어 하한 미달 요율도 허용된다.
     assertThat(valid()
         .orderCode(OrderCode.BUY)
-        .baseRates(Map.of(MarketName.ETF, 0.60))
-        .stepRates(Map.of(MarketName.ETF, 0.40))
+        .baseRates(Map.of(MarketName.ETF, half - 0.05))
+        .stepRates(Map.of(MarketName.ETF, half))
         .build())
         .isNotNull();
   }

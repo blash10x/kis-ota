@@ -11,9 +11,6 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 class LadderPricerTest {
 
   private static final Map<MarketName, Double> BASE_RATES =
@@ -25,7 +22,7 @@ class LadderPricerTest {
 
   /**
    * 449450 PLUS K방산. 현재가(54,240)가 평단(63,547.59)보다 14.65% 아래인 손실 종목이라, 사다리 기준점이
-   * 손익분기가(평단*1.01 = 64,183.07)로 잡힌다.
+   * 손익분기가(평단*1.0175 = 64,659.67)로 잡힌다.
    */
   private static LadderInput.LadderInputBuilder deepUnderwaterEtf() {
     return LadderInput.builder()
@@ -66,27 +63,28 @@ class LadderPricerTest {
   void underwaterSellLaddersUpFromBreakEven() {
     List<LadderOrder> orders = ladderPricer.price(deepUnderwaterEtf().build());
 
-    // 첫 단은 손익분기가(64,183.07) 그 자체다(호가단위 올림 64,185). baseRate 를 얹지 않아, 깊은 손실
+    // 첫 단은 손익분기가(64,659.67) 그 자체다(호가단위 올림 64,660). baseRate 를 얹지 않아, 깊은 손실
     // 종목에서도 손익분기가에 걸어 두는 한 건이 살아남는다.
-    assertThat(orders.getFirst().unitPrice()).isEqualTo(64_185);
+    assertThat(orders.getFirst().unitPrice()).isEqualTo(64_660);
     // 모든 단이 손익분기가 위, 상한가 이하이고 서로 다르며 단조 증가한다.
     assertThat(orders).extracting(LadderOrder::unitPrice)
         .doesNotHaveDuplicates()
         .isSorted()
-        .allSatisfy(price -> assertThat(price).isGreaterThan(64_183).isLessThanOrEqualTo(70_510));
+        .allSatisfy(price -> assertThat(price).isGreaterThan(64_659).isLessThanOrEqualTo(70_510));
 
-    // 단 간격이 일정하다(이론 간격 ≈ 448.3원, 호가단위 5원 반올림으로 445~450). 첫 간격만 튀던 문제가 사라졌다.
+    // 단 간격이 일정하다(이론 간격 ≈ 451.7원, 호가단위 5원 반올림으로 450~455). 첫 간격만 튀던 문제가 사라졌다.
     List<Integer> prices = orders.stream().map(LadderOrder::unitPrice).toList();
     for (int i = 1; i < prices.size(); i++) {
-      assertThat(prices.get(i) - prices.get(i - 1)).isBetween(445, 450);
+      assertThat(prices.get(i) - prices.get(i - 1)).isBetween(450, 455);
     }
-    // baseRate 를 뺀 만큼 사다리 바닥이 낮아져, 같은 상한가(70,510) 안에 15단이 들어간다.
-    assertThat(orders).hasSize(15);
+    // 현재가에서 손익분기가까지 이미 +19.2% 를 쓰고 시작하므로, 남은 실효 등락률 상한(RATE_CAP 29.985%)
+    // 안에 13단이 들어간다.
+    assertThat(orders).hasSize(13);
   }
 
   /**
    * 133690 TIGER 미국나스닥100 실제 사례. 현재가(179,850)가 평단(178,149.57) 위인 수익 종목(+0.95%)이지만
-   * 수익률이 1% 미만이라 손익분기가(179,931.07)는 현재가보다 높다.
+   * 수익률이 1.75% 미만이라 손익분기가(181,267.19)는 현재가보다 높다.
    */
   private static LadderInput.LadderInputBuilder marginallyProfitableEtf() {
     return LadderInput.builder()
@@ -104,18 +102,17 @@ class LadderPricerTest {
   }
 
   @Test
-  @DisplayName("수익률 1% 미만이어도 수익 종목이면 현재가 기준으로 사다리를 벌린다")
+  @DisplayName("수익률 1.75% 미만이어도 수익 종목이면 현재가 기준으로 사다리를 벌린다")
   void marginallyProfitableSellAnchorsAtCurrentPrice() {
     // 예전에는 이 구간(평단 ≤ 현재가 < 손익분기가)도 손익분기가로 재앵커해 첫 단이 현재가 +0.05% 에
     // 붙었다 — 수익 종목은 현재가 대비 추가 수익이 원칙이다.
     List<LadderOrder> orders = new LadderPricer(in -> 1.0).price(marginallyProfitableEtf().build());
 
-    // 첫 단 = 현재가 * (1 + 1.0*(2.05 + 1*0.55)/100) = 184,526.1 → 호가단위 올림 184,530.
-    // 손익분기가(호가단위 올림 179,935)가 아니다.
+    // 첫 단 = 현재가 * (1 + 1.0*(2.05 + 1*0.55)/100) = 184,526.1 → 호가단위 올림 184,530. 손익분기가가 아니다.
     assertThat(orders.getFirst().unitPrice()).isEqualTo(184_530);
-    // 현재가 앵커여도 모든 단이 손익분기가 위라 +1% 보장은 유지된다.
+    // 현재가 앵커여도 모든 단이 손익분기가(호가단위 올림 181,270) 이상이라 손익분기 보장은 유지된다.
     assertThat(orders).extracting(LadderOrder::unitPrice)
-        .allSatisfy(price -> assertThat(price).isGreaterThan(179_935));
+        .allSatisfy(price -> assertThat(price).isGreaterThanOrEqualTo(181_270));
   }
 
   @Test
@@ -127,16 +124,16 @@ class LadderPricerTest {
     assertThat(orders).allSatisfy(order ->
         assertThat(order.rate())
             .isCloseTo((order.unitPrice() - 54_240) * 100.0 / 54_240, within(1e-9)));
-    // 첫 단(64,185)의 실효 등락률은 +18.34% 다. 현재가가 손익분기가보다 그만큼 아래라는 뜻이다.
-    assertThat(orders.getFirst().rate()).isCloseTo(18.335, within(0.001));
+    // 첫 단(64,660)의 실효 등락률은 +19.21% 다. 현재가가 손익분기가보다 그만큼 아래라는 뜻이다.
+    assertThat(orders.getFirst().rate()).isCloseTo(19.211, within(0.001));
   }
 
   @Test
   @DisplayName("첫 단부터 상한가를 넘으면 한 건도 내지 않는다")
   void emptyWhenEvenTheFirstRungExceedsUpperLimit() {
-    // 상한가를 손익분기가(64,185) 바로 아래로 낮추면 첫 단부터 걸린다.
+    // 상한가를 손익분기가(64,660) 바로 아래로 낮추면 첫 단부터 걸린다.
     List<LadderOrder> orders =
-        ladderPricer.price(deepUnderwaterEtf().upperPriceLimit(64_180).build());
+        ladderPricer.price(deepUnderwaterEtf().upperPriceLimit(64_655).build());
 
     assertThat(orders).isEmpty();
   }
@@ -145,7 +142,7 @@ class LadderPricerTest {
   @DisplayName("실효 등락률이 가격제한폭(약 30%)을 넘는 단은 상한가 가드와 무관하게 잘린다")
   void capsActualRateAtDailyPriceLimit() {
     // 000660 SK하이닉스가 당일 급락한 실제 사례. 상한가(stck_mxpr)는 어제 종가 기준 2,754,000 으로 낡아 있지만,
-    // 예약주문의 익영업일 제한폭은 오늘 종가(1,842,000) 기준 +30% = 2,394,600 이다. 손익분기가(2,198,114.7) 앵커라
+    // 예약주문의 익영업일 제한폭은 오늘 종가(1,842,000) 기준 +30% = 2,394,600 이다. 손익분기가(2,214,437.3) 앵커라
     // 명목 rate 는 작아도 실효 등락률이 30% 를 넘는 단이 생기는데, 그 단부터 KIS 가 거부하므로 내지 않아야 한다.
     List<LadderOrder> orders = ladderPricer.price(LadderInput.builder()
         .orderCode(OrderCode.SELL)
@@ -161,9 +158,9 @@ class LadderPricerTest {
         .stepRates(STEP_RATES)
         .build());
 
-    // 5단(2,411,000, +30.9%)부터 제한폭 초과라 4단까지만 살아남는다.
+    // 5단(2,429,000, +31.9%)부터 제한폭 초과라 4단까지만 살아남는다.
     assertThat(orders).extracting(LadderOrder::unitPrice)
-        .containsExactly(2_199_000, 2_252_000, 2_305_000, 2_358_000);
+        .containsExactly(2_215_000, 2_268_000, 2_322_000, 2_375_000);
     assertThat(orders).extracting(LadderOrder::rate).allSatisfy(
         rate -> assertThat(rate).isLessThanOrEqualTo(29.985));
   }
@@ -183,7 +180,7 @@ class LadderPricerTest {
         ladderPricer.price(climbingKospi().dayOverDayRate(-3.0).build()).getFirst().unitPrice();
     assertThat(downFirst).isGreaterThan(flatFirst);
 
-    // 수익률 1% 미만 수익 종목도 수익 종목이라 보정이 붙는다. 손익분기 재앵커 경로였던 시절에는 안 붙던 구간이다.
+    // 수익률 1.75% 미만 수익 종목도 수익 종목이라 보정이 붙는다. 손익분기 재앵커 경로였던 시절에는 안 붙던 구간이다.
     LadderPricer flatWeight = new LadderPricer(in -> 1.0);
     int marginalFlat = flatWeight.price(marginallyProfitableEtf().build()).getFirst().unitPrice();
     int marginalDown = flatWeight.price(marginallyProfitableEtf().dayOverDayRate(-3.0).build())

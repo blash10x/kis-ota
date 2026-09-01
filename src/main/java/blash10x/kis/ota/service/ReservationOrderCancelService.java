@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 public class ReservationOrderCancelService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ReservationOrderCancelService.class);

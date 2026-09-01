@@ -24,8 +24,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 현재가에서 단계별로 벌어지는 지정가 주문(사다리)을 생성한다. 주문 전송 방식만 {@link #submit} 으로 갈라진다.
- *
- * @author myungsik.sung@gmail.com
  */
 abstract class LadderOrderService<T> {
   private static final String INTEREST_STOCK_GROUP = "001";

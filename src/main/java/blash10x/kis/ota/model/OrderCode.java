@@ -2,9 +2,6 @@ package blash10x.kis.ota.model;
 
 import lombok.Getter;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Getter
 public enum OrderCode {
   SELL("01"), BUY("02");

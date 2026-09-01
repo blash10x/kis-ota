@@ -5,8 +5,6 @@ import blash10x.kis.ota.model.OrderCode;
 
 /**
  * KRX 호가단위 규칙.
- *
- * @author myungsik.sung@gmail.com
  */
 public final class TickSize {
 

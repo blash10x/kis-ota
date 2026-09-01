@@ -4,9 +4,6 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Getter
 public class ClientException extends ServiceException {
   private final HttpStatus httpStatus;

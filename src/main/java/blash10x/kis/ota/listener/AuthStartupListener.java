@@ -10,9 +10,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Profile("!test")
 @Component
 @RequiredArgsConstructor

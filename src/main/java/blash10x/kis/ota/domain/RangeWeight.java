@@ -5,8 +5,6 @@ package blash10x.kis.ota.domain;
  *
  * <p>변동폭 비율 {@code r = (52주최고 - 52주최저) / 기준가} 를 {@code log(r + C) + 1} 로 눌러 1 근처로 만든다. 베타 가중치와 같은
  * 로그 변환이며, 최저 변동폭 종목(r ≈ {@value #NEUTRAL_RATIO})에서 가중치가 하한 1.0 에 닿도록 상수를 잡았다.
- *
- * @author myungsik.sung@gmail.com
  */
 public final class RangeWeight implements LadderWeight {
 

@@ -29,9 +29,6 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.transport.logging.AdvancedByteBufFormat;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public final class ExternalService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExternalService.class);
   private final Duration timeout = Duration.ofMillis(2000);

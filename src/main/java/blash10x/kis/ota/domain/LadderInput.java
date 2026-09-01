@@ -23,7 +23,6 @@ import lombok.Builder;
  * @param size 사다리 최대 단수. 0 이면 주문하지 않는다
  * @param baseRates 시장별 기본 요율
  * @param stepRates 시장별 단계 요율
- * @author myungsik.sung@gmail.com
  */
 @Builder
 public record LadderInput(
@@ -55,15 +54,16 @@ public record LadderInput(
     if (size < 0) {
       throw new IllegalArgumentException("size must not be negative: " + size);
     }
-    // 수익 종목 매도의 +1% 보장은 첫 단 깊이 weight*(base+step)(weight 하한 1.0)가 손익분기 여유(1%)보다
-    // 깊다는 데 기댄다(LadderPricer 의 기준점 선택 참고). 설정이 이 전제를 깨면 사다리가 조용히 손익분기
-    // 아래에서 시작하므로, 계산 전에 여기서 막는다. 인스턴스 메서드(baseRate())는 필드 대입 전이라 못 쓴다.
+    // 수익 종목 매도의 손익분기 보장은 첫 단 깊이 weight*(base+step)(weight 하한 1.0)가 손익분기
+    // 여유(BreakEven.MARGIN_RATE) 이상이라는 데 기댄다(LadderPricer 의 기준점 선택 참고). 설정이 이 전제를
+    // 깨면 사다리가 조용히 손익분기 아래에서 시작한다. 기동 시점 검증(OtaProperties)이 1차 방어선이고,
+    // 여기는 계산 직전의 최종 방어선이다. 인스턴스 메서드(baseRate())는 필드 대입 전이라 못 쓴다.
     if (OrderCode.SELL == orderCode) {
       double firstRungRate =
           baseRates.get(marketName.rateKey()) + stepRates.get(marketName.rateKey());
-      if (firstRungRate <= 1.0) {
-        throw new IllegalArgumentException(
-            "SELL base+step must exceed the break-even margin 1%: " + firstRungRate);
+      if (firstRungRate < BreakEven.MARGIN_RATE) {
+        throw new IllegalArgumentException("SELL base+step must reach the break-even margin "
+            + BreakEven.MARGIN_RATE + "%: " + firstRungRate);
       }
     }
   }

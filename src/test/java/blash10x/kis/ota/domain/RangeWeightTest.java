@@ -9,9 +9,6 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 class RangeWeightTest {
 
   private final RangeWeight rangeWeight = new RangeWeight();

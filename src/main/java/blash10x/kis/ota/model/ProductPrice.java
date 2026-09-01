@@ -3,9 +3,6 @@ package blash10x.kis.ota.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 public record ProductPrice(
     @Schema(description = "대표 시장 한글 명") @JsonProperty("rprs_mrkt_kor_name") String marketName,
     @Schema(description = "업종 한글 종목명") @JsonProperty("bstp_kor_isnm") String businessTypeName,

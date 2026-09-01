@@ -14,9 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 public class CashOrderService extends LadderOrderService<OrderResult> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CashOrderService.class);

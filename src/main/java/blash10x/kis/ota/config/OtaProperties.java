@@ -1,5 +1,6 @@
 package blash10x.kis.ota.config;
 
+import blash10x.kis.ota.domain.BreakEven;
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
 import jakarta.validation.constraints.AssertTrue;
@@ -12,9 +13,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Configuration
 @ConfigurationProperties(prefix = "ota")
 @Validated
@@ -50,15 +48,36 @@ public class OtaProperties {
   public boolean isOrderConfigComplete() {
     for (OrderCode orderCode : OrderCode.values()) {
       if (!maxRepetitions.containsKey(orderCode)
-          || !hasAllRateKeys(baseRates.get(orderCode))
-          || !hasAllRateKeys(stepRates.get(orderCode))) {
+          || !hasAllRates(baseRates.get(orderCode))
+          || !hasAllRates(stepRates.get(orderCode))) {
         return false;
       }
     }
     return true;
   }
 
-  private static boolean hasAllRateKeys(Map<MarketName, Double> rates) {
-    return rates != null && rates.keySet().containsAll(MarketName.rateKeys());
+  /**
+   * 매도 요율의 손익분기 하한도 기동 시점에 막는다. 이 전제가 깨진 설정은 기동에 성공한 뒤 첫 매도에서야
+   * LadderInput 예외로 드러나는데, 그 예외는 종목별 skip 으로 흡수되어 "주문 0건 + WARN 로그"로 끝난다.
+   *
+   * <p>요율이 누락된 경우는 여기서 통과시킨다 — 그건 {@link #isOrderConfigComplete()} 가 보고할 몫이다.
+   */
+  @AssertTrue(message = "base-rates + step-rates for SELL must reach the break-even margin")
+  public boolean isSellRateAtLeastBreakEvenMargin() {
+    Map<MarketName, Double> sellBaseRates = baseRates.get(OrderCode.SELL);
+    Map<MarketName, Double> sellStepRates = stepRates.get(OrderCode.SELL);
+    if (!hasAllRates(sellBaseRates) || !hasAllRates(sellStepRates)) {
+      return true;
+    }
+    return MarketName.rateKeys().stream()
+        .allMatch(key -> sellBaseRates.get(key) + sellStepRates.get(key) >= BreakEven.MARGIN_RATE);
+  }
+
+  /**
+   * 요율 키가 다 있고 값까지 채워졌는지. {@code ETF:} 처럼 키만 두면 값이 null 로 바인딩되는데, 키 존재만 보면
+   * 그 설정이 검증을 통과해 값을 꺼내 쓰는 쪽에서 언박싱 NPE 로 터진다. 값이 null 이면 키가 없는 것과 같이 본다.
+   */
+  private static boolean hasAllRates(Map<MarketName, Double> rates) {
+    return rates != null && MarketName.rateKeys().stream().allMatch(key -> rates.get(key) != null);
   }
 }

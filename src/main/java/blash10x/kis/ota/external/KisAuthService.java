@@ -20,9 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Service;
 
-/**
- * @author myungsik.sung@gmail.com
- */
 @Service
 @Data
 public class KisAuthService {
