@@ -64,8 +64,8 @@ class LadderInputTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("break-even margin");
 
-    // 하한 정확히는 허용한다(운영 설정의 ETF 매도 1.25+0.50 이 이 경계에 붙어 있다). 첫 단이 손익분기가와
-    // 같고, 매도는 호가단위 올림이라 그 아래로 내려가지 않는다.
+    // 하한 정확히는 허용한다. 첫 단이 손익분기가와 같고, 매도는 호가단위 올림이라 그 아래로 내려가지 않는다.
+    // (운영 설정에서 하한에 가장 가까운 것은 ETF 매도 1.25+0.50 = 1.75 다.)
     assertThat(valid()
         .baseRates(Map.of(MarketName.ETF, half))
         .stepRates(Map.of(MarketName.ETF, half))

@@ -12,7 +12,7 @@ package blash10x.kis.ota.domain;
 public final class BreakEven {
 
   /** 평단 대비 최소 확보 이익률(%). */
-  public static final double MARGIN_RATE = 1.75;
+  public static final double MARGIN_RATE = 1.65;
 
   private BreakEven() {}
 
