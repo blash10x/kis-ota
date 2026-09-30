@@ -3,6 +3,7 @@ package blash10x.kis.ota.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import blash10x.kis.ota.model.MarketName;
 import blash10x.kis.ota.model.OrderCode;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class LadderInputTest {
+
+  private static final double MARGIN_RATE = LadderFixtures.BREAK_EVEN_MARGIN_RATE;
 
   private static LadderInput.LadderInputBuilder valid() {
     return LadderInput.builder()
@@ -24,7 +27,8 @@ class LadderInputTest {
         .purchaseAvgPrice(1_000)
         .size(3)
         .baseRates(Map.of(MarketName.ETF, 2.05))
-        .stepRates(Map.of(MarketName.ETF, 0.55));
+        .stepRates(Map.of(MarketName.ETF, 0.55))
+        .breakEvenMarginRate(MARGIN_RATE);
   }
 
   @Test
@@ -52,9 +56,9 @@ class LadderInputTest {
   void rejectsSellRatesNotReachingBreakEvenMargin() {
     // 수익 종목 매도의 손익분기 보장은 첫 단 깊이(base+step, weight 하한 1.0)가 여유 이상이라는 전제 위에 있다.
     // 설정이 전제를 깨면 계산 결과가 조용히 손익분기 아래로 내려가므로 입력 시점에 막는다.
-    // 경계는 여유에서 파생한다 — 리터럴로 박아 두면 여유를 조정했을 때 경계를 벗어난 채로 통과한다.
-    // (half + half 는 double 에서도 정확히 MARGIN_RATE 다.)
-    double half = BreakEven.MARGIN_RATE / 2;
+    // 경계는 입력으로 넣은 여유에서 파생한다 — half + half 는 double 에서도 정확히 여유와 같아 등호 경계를
+    // 그대로 밟는다.
+    double half = MARGIN_RATE / 2;
 
     // 하한 직전(합 = 여유 - 0.05)은 거부한다.
     assertThatThrownBy(() -> valid()
@@ -65,7 +69,7 @@ class LadderInputTest {
         .hasMessageContaining("break-even margin");
 
     // 하한 정확히는 허용한다. 첫 단이 손익분기가와 같고, 매도는 호가단위 올림이라 그 아래로 내려가지 않는다.
-    // (운영 설정에서 하한에 가장 가까운 것은 ETF 매도 1.25+0.50 = 1.75 다.)
+    // (운영 설정의 ETF 매도가 하한에 정확히 붙어 운용되므로, 등호 허용은 실제로 쓰이는 경계다.)
     assertThat(valid()
         .baseRates(Map.of(MarketName.ETF, half))
         .stepRates(Map.of(MarketName.ETF, half))
@@ -79,6 +83,48 @@ class LadderInputTest {
         .stepRates(Map.of(MarketName.ETF, half))
         .build())
         .isNotNull();
+  }
+
+  @Test
+  @DisplayName("매도 요율 하한은 입력으로 받은 여유를 따른다")
+  void sellRateFloorFollowsConfiguredMargin() {
+    // 같은 요율(2.05+0.55 = 2.60)이 여유 3.0 에서는 하한 미달이다.
+    assertThatThrownBy(() -> valid().breakEvenMarginRate(3.0).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("break-even margin");
+  }
+
+  @Test
+  @DisplayName("하한에 정확히 붙인 요율은 합의 부동소수 오차가 있어도 허용한다")
+  void acceptsRatesExactlyAtMarginDespiteFloatingPointError() {
+    // 2.05 + 0.55 는 double 에서 2.5999999999999996 이다. 그대로 비교하면 여유 2.60 에 정확히 붙인 설정이
+    // 미달로 거부된다.
+    assertThat(2.05 + 0.55).isLessThan(2.60);
+    assertThat(valid().breakEvenMarginRate(2.60).build()).isNotNull();
+
+    // 허용치는 설정 단위(0.01)보다 한참 작아, 실제 미달(0.01%p)은 그대로 거부한다.
+    assertThatThrownBy(() -> valid().breakEvenMarginRate(2.61).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("break-even margin");
+  }
+
+  @Test
+  @DisplayName("손익분기가는 평단에 여유를 얹은 값이다")
+  void breakEvenPriceAddsMarginToPurchaseAvgPrice() {
+    assertThat(valid().purchaseAvgPrice(10_000).breakEvenMarginRate(1.65).build().breakEvenPrice())
+        .isCloseTo(10_165.0, within(1e-6));
+  }
+
+  @Test
+  @DisplayName("매도는 손익분기 여유가 양수여야 한다")
+  void rejectsSellWithoutBreakEvenMargin() {
+    // 빌더가 여유를 빠뜨리면 0.0 으로 채워져, 손익분기가가 평단 그 자체가 되고 요율 하한 검증도 그냥 통과한다.
+    assertThatThrownBy(() -> valid().breakEvenMarginRate(0.0).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("breakEvenMarginRate");
+
+    // 매수는 손익분기 개념이 없어 여유를 보지 않는다.
+    assertThat(valid().orderCode(OrderCode.BUY).breakEvenMarginRate(0.0).build()).isNotNull();
   }
 
   @Test

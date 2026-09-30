@@ -23,6 +23,8 @@ import lombok.Builder;
  * @param size 사다리 최대 단수. 0 이면 주문하지 않는다
  * @param baseRates 시장별 기본 요율
  * @param stepRates 시장별 단계 요율
+ * @param breakEvenMarginRate 손익분기 여유(%). 평단 대비 최소 확보 이익률로, 손실 종목 매도의 기준점
+ *     ({@link #breakEvenPrice()})과 매도 요율 하한({@link BreakEven})이 함께 이 값을 본다. 매수는 쓰지 않는다
  */
 @Builder
 public record LadderInput(
@@ -39,7 +41,8 @@ public record LadderInput(
     double purchaseAvgPrice,
     int size,
     Map<MarketName, Double> baseRates,
-    Map<MarketName, Double> stepRates) {
+    Map<MarketName, Double> stepRates,
+    double breakEvenMarginRate) {
 
   /**
    * 빌더는 빠뜨린 값을 null 로 조용히 채우고, 그 대가는 한참 뒤 계산 중의 NPE 로 돌아온다. 여기서 막는다.
@@ -55,15 +58,20 @@ public record LadderInput(
       throw new IllegalArgumentException("size must not be negative: " + size);
     }
     // 수익 종목 매도의 손익분기 보장은 첫 단 깊이 weight*(base+step)(weight 하한 1.0)가 손익분기
-    // 여유(BreakEven.MARGIN_RATE) 이상이라는 데 기댄다(LadderPricer 의 기준점 선택 참고). 설정이 이 전제를
+    // 여유(breakEvenMarginRate) 이상이라는 데 기댄다(LadderPricer 의 기준점 선택 참고). 설정이 이 전제를
     // 깨면 사다리가 조용히 손익분기 아래에서 시작한다. 기동 시점 검증(OtaProperties)이 1차 방어선이고,
     // 여기는 계산 직전의 최종 방어선이다. 인스턴스 메서드(baseRate())는 필드 대입 전이라 못 쓴다.
     if (OrderCode.SELL == orderCode) {
+      // 빌더가 여유를 빠뜨리면 0.0 으로 채워져, 손익분기가가 평단 그 자체가 되고 아래 하한 검증도 그냥 통과한다.
+      if (breakEvenMarginRate <= 0) {
+        throw new IllegalArgumentException(
+            "breakEvenMarginRate must be positive: " + breakEvenMarginRate);
+      }
       double firstRungRate =
           baseRates.get(marketName.rateKey()) + stepRates.get(marketName.rateKey());
-      if (firstRungRate < BreakEven.MARGIN_RATE) {
+      if (!BreakEven.isMarginReached(firstRungRate, breakEvenMarginRate)) {
         throw new IllegalArgumentException("SELL base+step must reach the break-even margin "
-            + BreakEven.MARGIN_RATE + "%: " + firstRungRate);
+            + breakEvenMarginRate + "%: " + firstRungRate);
       }
     }
   }
@@ -74,5 +82,13 @@ public record LadderInput(
 
   public double stepRate() {
     return stepRates.get(marketName.rateKey());
+  }
+
+  /**
+   * 손익분기가. 평단에 여유를 얹은 값으로, 손실 종목 매도 사다리의 기준점이다. 여유를 인자로 받지 않고
+   * 생성자가 요율 하한을 검증한 바로 그 값을 쓴다 — 기준점과 하한이 서로 다른 여유를 볼 길을 없앤다.
+   */
+  public double breakEvenPrice() {
+    return purchaseAvgPrice * (1 + breakEvenMarginRate / 100);
   }
 }

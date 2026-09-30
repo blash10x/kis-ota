@@ -28,6 +28,7 @@ class BetaWeightTest {
         .size(1)
         .baseRates(Map.of(MarketName.KOSPI200, 3.20))
         .stepRates(Map.of(MarketName.KOSPI200, 1.20))
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE)
         .build();
   }
 

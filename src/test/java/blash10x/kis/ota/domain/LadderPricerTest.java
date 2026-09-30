@@ -36,7 +36,8 @@ class LadderPricerTest {
         .purchaseAvgPrice(63_547.59)
         .size(20)
         .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
+        .stepRates(STEP_RATES)
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE);
   }
 
   /**
@@ -55,7 +56,8 @@ class LadderPricerTest {
         .purchaseAvgPrice(10_000)
         .size(5)
         .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
+        .stepRates(STEP_RATES)
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE);
   }
 
   @Test
@@ -82,6 +84,17 @@ class LadderPricerTest {
     assertThat(orders).hasSize(14);
   }
 
+  @Test
+  @DisplayName("손익분기가는 입력으로 받은 여유를 따른다")
+  void breakEvenAnchorFollowsConfiguredMargin() {
+    // 여유는 설정(ota.break-even-margin-rate)에서 입력으로 실려 온다. 여유 1.0% 면 기준점이
+    // 평단*1.01 = 64,183.07 로 내려가 첫 단이 호가단위 올림 64,185 가 된다.
+    List<LadderOrder> orders =
+        ladderPricer.price(deepUnderwaterEtf().breakEvenMarginRate(1.0).build());
+
+    assertThat(orders.getFirst().unitPrice()).isEqualTo(64_185);
+  }
+
   /**
    * 133690 TIGER 미국나스닥100 실제 사례. 현재가(179,850)가 평단(178,149.57) 위인 수익 종목(+0.95%)이지만
    * 수익률이 1.65% 미만이라 손익분기가(181,089.04)는 현재가보다 높다.
@@ -98,7 +111,8 @@ class LadderPricerTest {
         .purchaseAvgPrice(178_149.57)
         .size(3)
         .baseRates(BASE_RATES)
-        .stepRates(STEP_RATES);
+        .stepRates(STEP_RATES)
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE);
   }
 
   @Test
@@ -156,6 +170,7 @@ class LadderPricerTest {
         .size(20)
         .baseRates(BASE_RATES)
         .stepRates(STEP_RATES)
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE)
         .build());
 
     // 5단(2,426,000, +31.7%)부터 제한폭 초과라 4단까지만 살아남는다.

@@ -25,7 +25,8 @@ class RangeWeightTest {
         .purchaseAvgPrice(0.0)
         .size(1)
         .baseRates(Map.of(MarketName.ETF, 2.05))
-        .stepRates(Map.of(MarketName.ETF, 0.55));
+        .stepRates(Map.of(MarketName.ETF, 0.55))
+        .breakEvenMarginRate(LadderFixtures.BREAK_EVEN_MARGIN_RATE);
   }
 
   @Test

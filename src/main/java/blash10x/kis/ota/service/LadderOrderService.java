@@ -118,6 +118,12 @@ abstract class LadderOrderService<T> {
     }
     logger.info("orderProductNos={}", orderProductNos);
 
+    // 실제로 적용된 손익분기 여유. 설정 키를 잘못 쓰면 예외 없이 코드 기본값으로 떨어지므로, 의도한 값이
+    // 걸렸는지 주문 로그에서 확인할 수 있게 한다. 매수는 손익분기 개념이 없어 매도 경로에서만 찍는다.
+    if (OrderCode.SELL == orderCode) {
+      logger.info("breakEvenMarginRate={}", otaProperties.getBreakEvenMarginRate());
+    }
+
     // 매수 예산: 미수(외상) 매수를 막는 가드. 예약주문도 익영업일에 현금주문으로 전환되므로 같은 예산을 적용한다.
     // 조회에 실패하면 여기서 예외로 멈춘다(fail-closed) — 예산을 모른 채 매수를 내는 것이 곧 미수 위험이다.
     // dry-run(Mock)에도 같은 차감을 적용해, 예산상 몇 단까지 나가는지 실주문 없이 미리 볼 수 있게 한다.
@@ -195,6 +201,7 @@ abstract class LadderOrderService<T> {
         .size(getOrderSize(balance, orderCode, maxRepetitions))
         .baseRates(baseRates)
         .stepRates(stepRates)
+        .breakEvenMarginRate(otaProperties.getBreakEvenMarginRate())
         .build();
 
     // 건너뛴 단은 LadderPricer 가 이미 걸러냈으므로, 여기 남은 것은 전부 전송할 주문이다.

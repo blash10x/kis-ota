@@ -42,6 +42,14 @@ public class OtaProperties {
       OrderCode.SELL, Map.of(MarketName.KOSPI200, 1.20, MarketName.ETF, 0.55),
       OrderCode.BUY, Map.of(MarketName.KOSPI200, 1.15, MarketName.ETF, 0.50));
 
+  /**
+   * 손익분기 여유(%) — 손실 종목 매도가 최소한 확보해야 하는 평단 대비 이익률. 손실 종목 매도의 사다리 기준점
+   * (평단 × (1 + 여유/100))과 매도 요율 하한({@link #isSellRateAtLeastBreakEvenMargin()})이 함께 이 값을 본다.
+   * 설정이 없으면 종전 상수값을 쓴다.
+   */
+  @Positive
+  private double breakEvenMarginRate = 1.65;
+
   /** 요청 시점이 아니라 기동 시점에 설정 누락을 막는다. 누락된 채 주문이 실행되면 NPE 로 터진다. */
   @AssertTrue(message = "max-repetitions, base-rates, step-rates must have an entry"
       + " for every OrderCode, and rates for every MarketName rate key")
@@ -70,7 +78,8 @@ public class OtaProperties {
       return true;
     }
     return MarketName.rateKeys().stream()
-        .allMatch(key -> sellBaseRates.get(key) + sellStepRates.get(key) >= BreakEven.MARGIN_RATE);
+        .allMatch(key -> BreakEven.isMarginReached(
+            sellBaseRates.get(key) + sellStepRates.get(key), breakEvenMarginRate));
   }
 
   /**
